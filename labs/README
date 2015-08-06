@@ -1,0 +1,1 @@
+This directory is the root for the lab exercises used at the University of Oregon in Spring of 2014. OpenCV is required for some of the labs and Makefiles assume the Intel compilers will be used.
