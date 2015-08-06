@@ -28,7 +28,7 @@ run: foo.txt
 
 # Rule for creating sample input file with the text generator.
 foo.txt: ngram$(EXE) ../ngram/alice.html
-	ngram$(EXE) 250000000 ../ngram/alice.html foo.txt
+	./ngram$(EXE) 250000000 ../ngram/alice.html foo.txt
 
 # Rule for building text generator.
 ngram$(EXE): ../ngram/ngram.cpp
