@@ -5,8 +5,10 @@
 //#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <tbb/tick_count.h>
 
 using namespace cv;
+using namespace tbb;
 
 struct pixel {
 	double red;
@@ -88,6 +90,7 @@ void apply_stencil(const int radius, const double stddev, const int rows, const 
 	const int dim = radius*2+1;
 	double kernel[dim*dim];
 	gaussian_kernel(dim, dim, stddev, kernel);
+	tick_count tstart = tick_count::now();
 	for(int i = 0; i < rows; ++i) {
 		for(int j = 0; j < cols; ++j) {
 			const int out_offset = i + (j*rows);
@@ -105,6 +108,8 @@ void apply_stencil(const int radius, const double stddev, const int rows, const 
 			}
 		}
 	}
+	tick_count tend = tick_count::now();
+	printf("time for stencil = %g seconds\n",(tend-tstart).seconds());
 }
 
 int main( int argc, char* argv[] ) {
