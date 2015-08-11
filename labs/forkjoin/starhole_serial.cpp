@@ -6,8 +6,10 @@
 //#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <tbb/tick_count.h>
 
 using namespace cv;
+using namespace tbb;
 
 #include "starhole_common.cpp"
 
@@ -30,6 +32,7 @@ int walker(long int seed, int x, int y, int stepsremaining) {
     struct drand48_data seedbuf;
     srand48_r(seed, &seedbuf);
     int particles = 1;
+
     for( ; stepsremaining>0 ; stepsremaining-- ) {
         
         // Does the Carter particle split? If so, start the walk for the new one
@@ -69,12 +72,15 @@ int main(int argc, char** argv) {
     // Start initial walks
     printf("Starting the walks...\n");
     int totParticles = 0;
+    tick_count tstart = tick_count::now();
     for(int i=0;i<coordPairs*2;i+=2) {
         for(int j=0;j<amount;j++) {
             totParticles += walker(i+j, coords[i], coords[i+1], sim_steps);
         }
     }
+    tick_count tend = tick_count::now();
     printf("Walks complete... finished with %d particles\n",totParticles);
+    printf("time for all walks = %g seconds\n",(tend-tstart).seconds());
    
     // Generate the output
     writeOutput(radius, outArea);
