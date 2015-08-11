@@ -3,6 +3,9 @@
 #include <unistd.h>
 
 #include <openssl/md5.h>
+#include <tbb/tick_count.h>
+
+using namespace tbb;
 
 const char* chars="0123456789";
 
@@ -40,11 +43,14 @@ int main(int argc, char** argv) {
     char passmatch[9];
     long currpass=0;
     int notfound=1;
+    tick_count tstart = tick_count::now();
     while(notfound) {
         genpass(currpass,passmatch);
         notfound=test(argv[1], passmatch);
         currpass++;
     }
+    tick_count tend = tick_count::now();
+    printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
     printf("found: %s\n",passmatch);
     return 0;
 }
