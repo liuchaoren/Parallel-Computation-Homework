@@ -1,15 +1,15 @@
 default: matmul_serial
 
-all: matmul_serial matmul_mp matmul_cilk matmul_tbb
+all: matmul_serial matmul_openmp matmul_cilk matmul_tbb
 
 matmul_serial: matmul.c
-	icc -o matmul_serial matmul.c -fopenmp
+	icpc -std=c++11 -o matmul_serial matmul.c -fopenmp
 
-matmul_mp:
+matmul_openmp:
 
 matmul_cilk:
 
 matmul_tbb:
 
 clean:
-	rm matmul_serial matmul_mp matmul_cilk matmul_tbb 2>/dev/null
+	rm matmul_serial matmul_openmp matmul_cilk matmul_tbb 2>/dev/null

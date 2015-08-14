@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
+#include <tbb/tick_count.h>
 
-#define ORDER 1000   // the order of the matrix
+#define ORDER 4096   // the order of the matrix: can assume power of two
 #define AVAL  3.0    // initial value of A
 #define BVAL  5.0    // initial value of B
 #define TOL   0.001  // tolerance used to check the result
