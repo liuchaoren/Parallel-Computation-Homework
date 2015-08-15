@@ -10,7 +10,7 @@ The pipeline pattern can help to run a workflow, with stages, in parallel. This 
 
 OSNAP has intercepted a video signal of interest. We would like to view the signal in realtime however several filters must be applied. The provided serial implementation cannot keep up with the frame rate.
 
-Please modify using the pipeline pattern to increase the frame rate. The sample video frames are in /tmp/fusionvid on the NUCs in the lab.
+Please modify using the pipeline pattern to increase the frame rate. The sample video frames are in /tmp/parprogvideo on the machines.
 
 We only expect a TBB implementation as Cilk and OpenMP do not have built in constructions to express pipelines (Cilk will be getting pipelining in an upcoming version).
 

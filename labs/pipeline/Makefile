@@ -2,7 +2,7 @@ prog:=pipeline_serial
 objs:=$(patsubst %.c,%.o,$(wildcard *.cpp))
 
 cc=icpc
-ccflags= -MMD -g -Wall
+ccflags= -MMD -debug -Wall
 ldflags= -lopencv_core -lopencv_highgui -lopencv_imgproc
 
 %.o: %.c
@@ -15,7 +15,7 @@ $(prog): $(objs)
 .PHONY: clean
 
 clean:
-	rm -f garbleVideo *.o *.d counts* *.output *~ $(prog) 
+	rm -f *.o *.d counts* *.output *~ $(prog) 
 	
 -include *.d
 

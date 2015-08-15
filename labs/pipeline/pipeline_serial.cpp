@@ -15,7 +15,6 @@ static void ungarbleVideo(char**,int);
  */
 int main(int argc, char** argv)
 {
-   namedWindow("Nuclear Fusion",WINDOW_AUTOSIZE);
    
 	ungarbleVideo(argv+1,argc-1);//argv+1 is "all of the arguments except the executable name." C is weird
 	return 0;
@@ -46,11 +45,10 @@ void decreaseBrightnessFilter(Mat &frame, Mat &outFrame)
 } //END decreaseBrightnessFilter
 
 
-//filter to rotate a frame
+//filter to rotate a frame 340-180 = 160
 void rotateMatFilter(Mat &frame, Mat &outFrame) 
 {
-	int iAngle = 340;
-	Mat matRotation = getRotationMatrix2D(Point(frame.cols/2, frame.rows/2), (iAngle-180), 1);	 
+	Mat matRotation = getRotationMatrix2D(Point(frame.cols/2, frame.rows/2), +180, 1);	 
 	warpAffine( frame, outFrame, matRotation, frame.size());
 			
 } //END rotateMatFilter()
@@ -106,7 +104,7 @@ void ungarbleVideo(char** imgList, int numImgs)
 	   decreaseContrastFilter(brightFrameReturn, contrastFrameReturn);
 	   rearrangePixelsFilter(contrastFrameReturn, pixelsFrameReturn);
 	   rotateMatFilter(pixelsFrameReturn, rotateFrameReturn);
-      imshow("Nuclear Fusion",pixelsFrameReturn);
+      imshow("Pedestrian Crossing",rotateFrameReturn);
       waitKey(1);
    }
 }
