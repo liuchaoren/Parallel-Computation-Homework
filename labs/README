@@ -1,1 +1,6 @@
-This directory is the root for the lab exercises used at the University of Oregon in Spring of 2014. OpenCV is required for some of the labs and Makefiles assume the Intel compilers will be used.
+This directory is the root for the lab exercises.  It contains
+serial versions of several programs that you will convert to parallel
+implementations using specific patterns and various programming environments.
+
+This code is provided by the University of Oregon
+used at the University of Oregon in Spring of 2014. OpenCV is required for some of the labs and Makefiles assume the Intel compilers will be used.
