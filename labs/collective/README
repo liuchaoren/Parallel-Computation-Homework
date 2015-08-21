@@ -21,6 +21,8 @@ Our security consultants have devised an XOR based encryption strategy to suppor
 git pull <teacher repo remote> master
 
 2. Run the Makefile and look at the source code and output of each of the program.
+The program is executed with ./crypto_serial US.dic keys/*  You can use the
+superSecretText file for test input, but it is very small.
 
 3. Write a parallel version of the program in Cilk, TBB, and OpenMP.
 
