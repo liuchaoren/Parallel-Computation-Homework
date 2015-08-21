@@ -8,20 +8,32 @@ As you learned in lecture, the map pattern is one in which an operation is perfo
 #  Problem Statement
 ################################################################################
 
-OSNAP Executives need a tool to recover their PIN from the associated hash. You will write a program to do so in each of the three technologies.
+OSNAP Executives need a tool to recover their PIN from the associated hash. You will write a program to do so in each of the three paradigms.
 
 ################################################################################
 #  What to do
 ################################################################################
 
-1. Check out the repository
+1. Check out / update your repository
 
 git pull <teacher repo remote> master
 
-2. Run the Makefile and look at the source code and output of each of the programs.
+2. Run the Makefile, look at the source code and output of each of the programs.
 
-3. Write a parallel version of the program in Cilk, TBB, and OpenMP.
+3. Run the serial program using by executing the shell script testInit
+type ./testInit at your command prompt, this runs the program multiple times
+with different (small) inputs.  The program can be run manually with ./pass_serail `cat keys/01000000`
 
-4. Update the Makefile entries for the other three build targets with compilation commands for source files.
+4. Write a parallel version of the program in Cilk, TBB, and OpenMP.
+Follow the convention of <app>_openmp, <app>_cilk, <app>_tbb for source and
+executable files. I will relay on this for my own grading purposes.
 
-5. Commit the source files and updated Makefile to your repository.
+5. Update the Makefile entries for the other three build targets with compilation commands for source files.
+
+6. Get timing results for all implementations using the keys/99999999 file 
+as input. This should include the serial program, and your parallel versions
+with the number of threads to [1,2,4,6,8,16,32,64,128].  Plot the speedup
+for each result using your favorite tool (excel or gnuplot). 
+
+7. Commit the source files, updated Makefile, and PDF of the results to your group repository.
+
