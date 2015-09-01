@@ -8,12 +8,14 @@ To execute the script type ./<scriptname> at the command prompt (e.g., ./runmap.
 The script clones your group repository, compiles all the programs via make, 
 and then executes all the programs.
 
-A directory called tmprep is created after the clone.  This directory should 
+A directory called tmprepo is created after the clone.  This directory should 
 be removed before you execute the script again.  To remove the directory you 
 need to use the shell command rm -rf tmprep.  ****WARNING***** be very very 
 careful using rm -rf since it performs a recursive delete of the directory 
 and if you are not careful where you execute this you can accidentally 
 delete the wrong things. *******WARNING*******
+
+Do not add tmprepo to your group repository.
 
 You should ensure that everything works correctly using this script.  If not 
 you will not receive full credit for the assignemnt.
