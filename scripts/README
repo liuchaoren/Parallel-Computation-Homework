@@ -3,6 +3,8 @@ grading your assignments.
 
 Each script is named  run<prog>.sh (e.g., runmap.sh will run the map programs)
 
+Edit the script and replace the 20 in line 6 (Groups=20) with your group number.
+
 To execute the script type ./<scriptname> at the command prompt (e.g., ./runmap.sh)
 
 The script clones your group repository, compiles all the programs via make, 
