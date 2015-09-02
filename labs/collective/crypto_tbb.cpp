@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <omp.h>
 #include <tbb/tick_count.h>
+#include <tbb/tbb.h>
 
 using namespace tbb;
 
@@ -28,13 +29,39 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
   int keyLoop=0;
   int charLoop=0;
   tick_count tstart = tick_count::now();
-  for(charLoop=0;charLoop<ptextlen;charLoop++) {
-    char cipherChar=plainText[charLoop]; 
-    for(keyLoop=0;keyLoop<numKeys;keyLoop++) {
-       cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),charLoop);
-    }
-    cypherText[charLoop]=cipherChar;
-  }
+
+  // Outer loop: process each component parallelly using map
+  parallel_for(blocked_range<int>(0, ptextlen),
+	       [&](blocked_range<int> r)
+	       {
+		 for (int i = r.begin(); i < r.end(); i++)
+		   {
+		     // Inner loop: process XOR of plain text and keys parallelly using reduce
+		     // However, seems reduction does not boost the performance
+		     // Still working on reduction, not work right now
+		     /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
+						     char(0),
+						     [&](blocked_range<int> rr, char cipherChar) -> char
+						       {
+							 cipherChar = plainText[i];
+							 for (int j = rr.begin(); j < rr.end(); j++)
+							   cipherChar ^= getBit(&(keyList[j]),i);
+							 return cipherChar;
+						       },
+						     [](char x, char y) -> char
+						     {
+						       return x ^ y;
+						     }
+						     );*/
+		     char cipherChar = plainText[i]; 
+		     for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
+		       cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
+		     }
+		     cypherText[i]=cipherChar;
+		   }
+	       }
+	       );
+
   tick_count tend = tick_count::now();
   printf("time for encode = %g seconds\n",(tend-tstart).seconds());
 }
@@ -61,6 +88,8 @@ int main(int argc, char* argv[]) {
   char* rawData = (char*)malloc(sizeof(char)*textLength);
   fread(rawData,textLength,1,rawFile);
   fclose(rawFile);
+
+  printf("textLength = %d, numKeys = %d \n", textLength, numKeys);
 
   // Encrypt
   char* cypherText = (char*)malloc(sizeof(char)*textLength);

@@ -25,12 +25,16 @@ void getKeys(xorKey* keyList, char** fileList, int numKeys)
 }
 //Given text, a list of keys, the length of the text, and the number of keys, encodes the text
 void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, int numKeys) {
-  int keyLoop=0;
-  int charLoop=0;
   tick_count tstart = tick_count::now();
-  for(charLoop=0;charLoop<ptextlen;charLoop++) {
+
+  // Outer loop: process each component parallelly using map
+#pragma omp parallel for
+  for(int charLoop=0;charLoop<ptextlen;charLoop++) {
     char cipherChar=plainText[charLoop]; 
-    for(keyLoop=0;keyLoop<numKeys;keyLoop++) {
+    // Inner loop: process XOR of plain text and keys parallelly using reduce
+    // However, seems reduction does not boost the performance
+#pragma omp parallel for reduction(^:cipherChar)
+    for(int keyLoop=0;keyLoop<numKeys;keyLoop++) {
        cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),charLoop);
     }
     cypherText[charLoop]=cipherChar;
@@ -61,6 +65,8 @@ int main(int argc, char* argv[]) {
   char* rawData = (char*)malloc(sizeof(char)*textLength);
   fread(rawData,textLength,1,rawFile);
   fclose(rawFile);
+
+  printf("textLength = %d, numKeys = %d \n", textLength, numKeys);
 
   // Encrypt
   char* cypherText = (char*)malloc(sizeof(char)*textLength);
