@@ -72,9 +72,11 @@ int main(int argc, char** argv) {
   */
   if (type == 1)
     {
-      char passmatch[TILE_SIZE][9];  // Change passmatch string into a vector of string for the batch
       long currpass = 0;
-      int notfound[TILE_SIZE];  // Change indicator scalar into indicator vector for the batch   
+      // Change passmatch string into a vector of string for the batch
+      char passmatch[TILE_SIZE][9];  
+      // Change indicator scalar into indicator vector for the batch  
+      int notfound[TILE_SIZE];  
 
       // Initialize indicator vector so that nothing found at first
       for(int i = 0; i < TILE_SIZE; i++)

@@ -4,6 +4,8 @@
 
 #include <openssl/md5.h>
 #include <tbb/tick_count.h>
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
 
 using namespace tbb;
 
@@ -36,22 +38,84 @@ void genpass(long passnum, char* passbuff) {
     }
 }
 
+#define NUM_WORKER 32
+#define TILE_SIZE 16*NUM_WORKER
 int main(int argc, char** argv) {
-    if(argc != 2) {
-        printf("Usage: %s <password hash>\n",argv[0]);
-        return 1;
+   if(argc <  2) {
+    printf("Usage: %s <password hash>\n",argv[0]);
+    return 1;
+  }
+  int type = 1;
+  if (argc == 3)
+    type = atoi(argv[2]);
+
+
+  tick_count tstart = tick_count::now();
+  char final_passmatch[9];
+
+  /* 
+     First version: Processing a batch within one iteration
+     Process TILE_SIZE subtasks parallelly in the while loop 
+     Time wasted at end of parallel section because of untied run time
+  */
+  if (type == 1)
+    {
+      char thread_passmatch[NUM_WORKER][9];
+      long currpass = 0;
+      int notfound = 1;
+
+      while(notfound)
+	{
+	  cilk_for(int i = 0; i < TILE_SIZE; i++)
+	    {
+	      // Get id for current thread
+	      int thread_id = __cilkrts_get_worker_number();
+	      // Process currpass+i and store it in thread_passmatch[thread_id]
+	      genpass(currpass+i, thread_passmatch[thread_id]);
+	      // If the test passed, store current result
+	      // Note: only one correct result for this case, there is no race condition here
+	      if ( !test(argv[1], thread_passmatch[thread_id]) )
+		{
+		  notfound = 0;
+		  strcpy(final_passmatch, thread_passmatch[thread_id]);
+		}
+	    }
+	  currpass += TILE_SIZE;  // Update currpass by TILE_SIZE
+	}
     }
-    char passmatch[9];
-    long currpass=0;
-    int notfound=1;
-    tick_count tstart = tick_count::now();
-    while(notfound) {
-        genpass(currpass,passmatch);
-        notfound=test(argv[1], passmatch);
-        currpass++;
+  /*
+    Second version: Each thread works on its own subtask group as a while loop
+    Time wasted for untied run time for different subtask groups
+  */
+  else if (type == 2)
+    {
+      char thread_passmatch[NUM_WORKER][9];
+      long thread_currpass[NUM_WORKER];
+      int notfound = 1;
+
+      cilk_for(int i = 0; i < NUM_WORKER; i++)
+	{
+	  // Initialize currpass for each thread
+	  thread_currpass[i] = i;
+	  while(notfound)
+	    {
+	      // Process currpass and store it to passmach for this thread
+	      genpass(thread_currpass[i], thread_passmatch[i]);
+	      // If the test passed, store current result
+	      // Note: only one correct result for this case, there is no race condition here
+	      if ( !test(argv[1], thread_passmatch[i]) )
+		{
+		  notfound = 0;
+		  strcpy(final_passmatch, thread_passmatch[i]);
+		}
+	      // Update currpass for this thread
+	      thread_currpass[i] += NUM_WORKER;
+	    }
+	}
     }
-    tick_count tend = tick_count::now();
-    printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
-    printf("found: %s\n",passmatch);
-    return 0;
+
+  tick_count tend = tick_count::now();
+  printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
+  printf("found: %s\n",final_passmatch);
+  return 0;
 }
