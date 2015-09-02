@@ -4,6 +4,8 @@
 
 #include <openssl/md5.h>
 #include <tbb/tick_count.h>
+#include <tbb/tbb.h>
+#include <tbb/task_group.h>
 
 using namespace tbb;
 
@@ -36,22 +38,95 @@ void genpass(long passnum, char* passbuff) {
     }
 }
 
+int global_notfound = 1;
+#define NUM_WORKER 32
+#define TILE_SIZE 16*NUM_WORKER
 int main(int argc, char** argv) {
-    if(argc != 2) {
-        printf("Usage: %s <password hash>\n",argv[0]);
-        return 1;
+   if(argc <  2) {
+    printf("Usage: %s <password hash>\n",argv[0]);
+    return 1;
+  }
+  int type = 1;
+  if (argc == 3)
+    type = atoi(argv[2]);
+
+
+  tick_count tstart = tick_count::now();
+  char final_passmatch[9];
+
+  /* 
+     First version: Processing a batch within one iteration
+     Process TILE_SIZE subtasks parallelly in the while loop 
+     Time wasted at end of parallel section because of untied run time
+  */
+  if (type == 1)
+    {
+      // Since in TBB there is no good way to show thread ID, space has to sacrifice to avoid write conflict in thread_passmatch
+      char thread_passmatch[TILE_SIZE][9];
+      long currpass = 0;
+      int notfound = 1;
+
+      while(notfound)
+	{
+	  parallel_for(blocked_range<int>(0,TILE_SIZE),
+		       [&](blocked_range<int> r)
+		       {
+			 for (int i = r.begin(); i < r.end(); i++)
+			   {
+			     // Process currpass+i and store it in thread_passmatch[i]
+			     genpass(currpass+i, thread_passmatch[i]);
+			     // If the test passed, store current result
+			     // Note: only one correct result for this case, there is no race condition here
+			     if ( !test(argv[1], thread_passmatch[i]) )
+			       {
+				 notfound = 0;
+				 strcpy(final_passmatch, thread_passmatch[i]);
+			       }
+			   }
+		       }
+		       );
+	  currpass += TILE_SIZE;  // Update currpass by TILE_SIZE
+	}
     }
-    char passmatch[9];
-    long currpass=0;
-    int notfound=1;
-    tick_count tstart = tick_count::now();
-    while(notfound) {
-        genpass(currpass,passmatch);
-        notfound=test(argv[1], passmatch);
-        currpass++;
+  /*
+    Second version: Each thread works on its own subtask group as a while loop
+    Time wasted for untied run time for different subtask groups
+  */
+  else if (type == 2)
+    {
+      auto subtask = [] (int i, char* final, char* answer)
+	{
+	  int currpass = i;
+	  char passmatch[9];
+	  while(global_notfound)
+	    {
+	      // Process currpass and store it to passmach for this thread
+	      genpass(currpass, passmatch);
+	      // If the test passed, store current result
+	      // Note: only one correct result for this case, there is no race condition here
+	      if ( !test(answer, passmatch) )
+		{
+		  global_notfound = 0;
+		  strcpy(final, passmatch);
+		}
+	      // Update currpass for this thread
+	      currpass += NUM_WORKER;
+	      // printf("Task %d, currpass = %d \n", i, currpass);
+	    }
+	};
+      
+      // Build task group and put in subtask into it
+      task_group g;
+      for (int i = 0; i < NUM_WORKER; i++)
+	g.run([=,&final_passmatch] 
+	      {
+		subtask(i, final_passmatch, argv[1]);
+	      });
+      g.wait();
     }
-    tick_count tend = tick_count::now();
-    printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
-    printf("found: %s\n",passmatch);
-    return 0;
+
+  tick_count tend = tick_count::now();
+  printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
+  printf("found: %s\n",final_passmatch);
+  return 0;
 }
