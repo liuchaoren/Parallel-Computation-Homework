@@ -38,12 +38,10 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 		   {
 		     // Inner loop: process XOR of plain text and keys parallelly using reduce
 		     // However, seems reduction does not boost the performance
-		     // Still working on reduction, not work right now
-		     /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
+		     cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
 						     char(0),
 						     [&](blocked_range<int> rr, char cipherChar) -> char
 						       {
-							 cipherChar = plainText[i];
 							 for (int j = rr.begin(); j < rr.end(); j++)
 							   cipherChar ^= getBit(&(keyList[j]),i);
 							 return cipherChar;
@@ -52,12 +50,12 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 						     {
 						       return x ^ y;
 						     }
-						     );*/
-		     char cipherChar = plainText[i]; 
+						     ) ^ plainText[i];
+		     /* char cipherChar = plainText[i]; 
 		     for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
 		       cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
 		     }
-		     cypherText[i]=cipherChar;
+		     cypherText[i]=cipherChar; */
 		   }
 	       }
 	       );
