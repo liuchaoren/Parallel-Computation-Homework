@@ -44,78 +44,99 @@ int main(int argc, char** argv) {
    if(argc <  2) {
     printf("Usage: %s <password hash>\n",argv[0]);
     return 1;
-  }
-  int type = 1;
-  if (argc == 3)
-    type = atoi(argv[2]);
+   }
+   // This variable indicates running whose code
+   // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
+   int who = 1;
+   if (argc >= 3)
+     who = atoi(argv[2]);
+   // This variable indicates running which method
+   // Since it is possible that one person tries multiple approaches
+   int type = 1;
+   if (argc >= 4)
+     type = atoi(argv[3]);
 
+   tick_count tstart = tick_count::now();
+   char final_passmatch[9];  // Final result of passmatch
 
-  tick_count tstart = tick_count::now();
-  char final_passmatch[9];
+   if (who == 1)
+     { 
+       /* 
+	  First version: Processing a batch within one iteration
+	  Process TILE_SIZE subtasks parallelly in the while loop 
+	  Time wasted at end of parallel section because of untied run time
+       */
+       if (type == 1)
+	 {
+	   char thread_passmatch[NUM_WORKER][9];
+	   long currpass = 0;
+	   int notfound = 1;
 
-  /* 
-     First version: Processing a batch within one iteration
-     Process TILE_SIZE subtasks parallelly in the while loop 
-     Time wasted at end of parallel section because of untied run time
-  */
-  if (type == 1)
-    {
-      char thread_passmatch[NUM_WORKER][9];
-      long currpass = 0;
-      int notfound = 1;
+	   while(notfound)
+	     {
+	       cilk_for(int i = 0; i < TILE_SIZE; i++)
+		 {
+		   // Get id for current thread
+		   int thread_id = __cilkrts_get_worker_number();
+		   // Process currpass+i and store it in thread_passmatch[thread_id]
+		   genpass(currpass+i, thread_passmatch[thread_id]);
+		   // If the test passed, store current result
+		   // Note: only one correct result for this case, there is no race condition here
+		   if ( !test(argv[1], thread_passmatch[thread_id]) )
+		     {
+		       notfound = 0;
+		       strcpy(final_passmatch, thread_passmatch[thread_id]);
+		     }
+		 }
+	       currpass += TILE_SIZE;  // Update currpass by TILE_SIZE
+	     }
+	 }
+       /*
+	 Second version: Each thread works on its own subtask group as a while loop
+	 Time wasted for untied run time for different subtask groups
+       */
+       else if (type == 2)
+	 {
+	   char thread_passmatch[NUM_WORKER][9];
+	   long thread_currpass[NUM_WORKER];
+	   int notfound = 1;
 
-      while(notfound)
-	{
-	  cilk_for(int i = 0; i < TILE_SIZE; i++)
-	    {
-	      // Get id for current thread
-	      int thread_id = __cilkrts_get_worker_number();
-	      // Process currpass+i and store it in thread_passmatch[thread_id]
-	      genpass(currpass+i, thread_passmatch[thread_id]);
-	      // If the test passed, store current result
-	      // Note: only one correct result for this case, there is no race condition here
-	      if ( !test(argv[1], thread_passmatch[thread_id]) )
-		{
-		  notfound = 0;
-		  strcpy(final_passmatch, thread_passmatch[thread_id]);
-		}
-	    }
-	  currpass += TILE_SIZE;  // Update currpass by TILE_SIZE
-	}
-    }
-  /*
-    Second version: Each thread works on its own subtask group as a while loop
-    Time wasted for untied run time for different subtask groups
-  */
-  else if (type == 2)
-    {
-      char thread_passmatch[NUM_WORKER][9];
-      long thread_currpass[NUM_WORKER];
-      int notfound = 1;
+	   cilk_for(int i = 0; i < NUM_WORKER; i++)
+	     {
+	       // Initialize currpass for each thread
+	       thread_currpass[i] = i;
+	       while(notfound)
+		 {
+		   // Process currpass and store it to passmach for this thread
+		   genpass(thread_currpass[i], thread_passmatch[i]);
+		   // If the test passed, store current result
+		   // Note: only one correct result for this case, there is no race condition here
+		   if ( !test(argv[1], thread_passmatch[i]) )
+		     {
+		       notfound = 0;
+		       strcpy(final_passmatch, thread_passmatch[i]);
+		     }
+		   // Update currpass for this thread
+		   thread_currpass[i] += NUM_WORKER;
+		 }
+	     }
+	 }
+       else
+	 printf("The forth argument for Mengke Lian's code is for the type, please input 1,2");
+     }	   
+   else if (who == 2)
+     {
+       // Kai Fan's code here
+     }
+   else if (who == 2)
+     {
+       // Chaoren Liu's code here
+     }
+   else
+     printf("The third argument is for choosing whose code, please input 1,2,3 \n");
 
-      cilk_for(int i = 0; i < NUM_WORKER; i++)
-	{
-	  // Initialize currpass for each thread
-	  thread_currpass[i] = i;
-	  while(notfound)
-	    {
-	      // Process currpass and store it to passmach for this thread
-	      genpass(thread_currpass[i], thread_passmatch[i]);
-	      // If the test passed, store current result
-	      // Note: only one correct result for this case, there is no race condition here
-	      if ( !test(argv[1], thread_passmatch[i]) )
-		{
-		  notfound = 0;
-		  strcpy(final_passmatch, thread_passmatch[i]);
-		}
-	      // Update currpass for this thread
-	      thread_currpass[i] += NUM_WORKER;
-	    }
-	}
-    }
-
-  tick_count tend = tick_count::now();
-  printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
-  printf("found: %s\n",final_passmatch);
-  return 0;
+   tick_count tend = tick_count::now();
+   printf("time for recovery = %g seconds\n",(tend-tstart).seconds());
+   printf("found: %s\n",final_passmatch);
+   return 0;
 }
