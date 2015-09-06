@@ -21,11 +21,12 @@ for the actual multiply logic. Time spent outside of the
 matrix_multiply function need not be measured.
 
 
-**You should ensure that the matrix multiply is fully vectorized.***  
+**For the data reorganized versions, you should ensure that the 
+matrix multiply is fully vectorized.***  
 
-To achieve this you can use the -vec-report=5 option to the compiler that will
+To help with this you can use the -vec-report=5 option to the compiler that will
 generate a report <filename>.rpt with information on how well the compiler was
-able to vectorize loops.  Hint, you may need to re-order loops to get the
+able to vectorize loops.  Hint, think about how consective data items are accessed in the inner most operations....you may need to re-order loops to get the
 maximum vectorization.
 
 ################################################################################
