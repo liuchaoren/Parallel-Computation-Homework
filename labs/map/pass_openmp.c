@@ -50,7 +50,7 @@ bool parallel_not_found(int* notfound, int N, int& match_index)
   return true;
 };
 
-#define NUM_WORKER 32  // The number of workers
+#define NUM_WORKER 32 // The number of workers
 #define TILE_SIZE 32*NUM_WORKER  // The size of each batch
 int main(int argc, char** argv) {
   if(argc <  2) {
@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
 	  int  thread_notfound;  // Thread loop stop flag
 	  char shared_passmatch[NUM_WORKER][9];  // Shared passmatch strings
 
+	  omp_set_num_threads(NUM_WORKER);
 #pragma omp parallel private(thread_id, thread_currpass, thread_notfound)
 	  {
 	    thread_id = omp_get_thread_num();
