@@ -28,7 +28,7 @@ do
 		cloneCmdRun=$($cloneCmd)
 		echo -e "Running: \n$ $cloneCmd"
 		echo -e "${cloneCmdRun}"
-		pushd $PWD/$localRepoDir/labs/collective
+		pushd $PWD/$localRepoDir/labs/data_reorg
 		make
 		echo -e "Run Serial Code"
 		$PWD/matmul_serial
