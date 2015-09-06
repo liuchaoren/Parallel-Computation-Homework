@@ -32,7 +32,7 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 
   // Change code here and re-compile it to run someone else's implementation
   // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
-  int who = 1;
+  int who = 2;
 
   if (who == 1)
     {
@@ -63,6 +63,15 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
   else if (who == 2)
     {
       // Kai Fan's code here
+      cilk_for(int charLoop = 0; charLoop < ptextlen; charLoop++) {
+	char cipherChar = plainText[charLoop]; 
+	cilk::reducer< cilk::op_xor<char> > reducecipherChar(cipherChar);
+	cilk_for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
+	  *reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
+	}
+	cypherText[charLoop] = reducecipherChar.get_value();
+    }
+
     }
   else if (who == 3)
     {

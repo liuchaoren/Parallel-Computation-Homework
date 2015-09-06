@@ -32,7 +32,7 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 
   // Change code here and re-compile it to run someone else's implementation
   // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
-  int who = 1;
+  int who = 2;
 
   if (who == 1)
     {
@@ -69,6 +69,26 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
   else if (who == 2)
     {
       // Kai Fan's code here
+      parallel_for(blocked_range<int>(0,ptextlen),
+		   [&](blocked_range<int> r) 
+		   {
+		     for (int charLoop = r.begin(); charLoop < r.end(); charLoop++) 
+		       {
+			 char cipherChar =
+			   plainText[charLoop] ^ parallel_reduce(blocked_range<int> (0,numKeys), char(0),
+								 [&](blocked_range<int> t, char reducecipherChar)
+								 {
+								   for (int keyLoop = t.begin(); keyLoop < t.end(); keyLoop++)
+								     reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
+								   return reducecipherChar;
+								 },
+								 [](char x, char y) -> char {return x^y;}
+								 );
+			 cypherText[charLoop] = cipherChar;
+		       }
+		   }
+		   );
+
     }
   else if (who == 3)
     {
