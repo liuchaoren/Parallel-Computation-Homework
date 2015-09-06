@@ -185,6 +185,58 @@ int main(int argc, char** argv) {
   else if (who == 2)
     {
       // Kai Fan's code here
+      // First Version: While-Batch Model
+      if (type == 1)
+	{
+	  omp_set_num_threads(NUM_WORKER);
+	  long currpass = 0;
+	  int notfound = 1;
+
+	  int BatchSize = 2048;
+	  char temppassmatch[BatchSize][9];
+   
+	  while(notfound) {
+     
+#pragma omp parallel for  shared(temppassmatch)
+	    for (int i = 0; i < BatchSize; i++){
+	      genpass(currpass+i,temppassmatch[i]);
+	      if (test(argv[1], temppassmatch[i]) == 0) {
+		notfound = 0;
+		strcpy(final_passmatch,temppassmatch[i]);
+	      }
+	    }
+	    currpass += BatchSize;
+	  }
+	}
+      // Second Version: While-Coset Model
+      else if (type == 2)
+	{
+	  omp_set_num_threads(NUM_WORKER);
+	  long currpass = 0;
+	  int notfound = 1;
+    
+	  int threadId;
+	  int thread_notfound = 1;
+	  char shared_passmatch[NUM_WORKER][9];
+
+#pragma omp parallel private(currpass, threadId, thread_notfound) shared(notfound, shared_passmatch)
+	  {
+	    threadId = omp_get_thread_num();
+    
+	    while(notfound) {
+      
+	      genpass(currpass,shared_passmatch[threadId]);
+	      thread_notfound = test(argv[1], shared_passmatch[threadId]);
+	      if (thread_notfound ==0) {
+		notfound = 0;
+		strcpy(final_passmatch,shared_passmatch[threadId]);
+#pragma omp flush(notfound)
+	      }
+	      currpass += NUM_WORKER;
+	      //printf("%ld %d %d\n", currpass, threadId, omp_get_num_threads());
+	    }
+	  }
+	}
     }
   else if (who == 2)
     {

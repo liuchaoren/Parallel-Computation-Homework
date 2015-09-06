@@ -127,6 +127,28 @@ int main(int argc, char** argv) {
    else if (who == 2)
      {
        // Kai Fan's code here
+
+       long currpass = 0;
+       int notfound = 1;
+
+       int BatchSize = 1024;
+       char temppassmatch[NUM_WORKER][9];
+       int tempnotfound = 1;;
+    
+       while(notfound) {
+     
+	 cilk_for (int i = 0; i < BatchSize; i++){
+	   int workerid = __cilkrts_get_worker_number();
+	   genpass(currpass+i,temppassmatch[workerid]);
+	   tempnotfound = test(argv[1], temppassmatch[workerid]);
+	   if (tempnotfound ==0) {
+	     notfound = 0;
+	     strcpy(final_passmatch,temppassmatch[workerid]);
+	   }
+	 }
+	 currpass += BatchSize;
+       }
+
      }
    else if (who == 2)
      {
