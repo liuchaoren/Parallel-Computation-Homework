@@ -9,7 +9,6 @@
 
 using namespace tbb;
 
-
 const char* chars="0123456789";
 
 // tests if a hash matches a candidate password
@@ -40,7 +39,7 @@ void genpass(long passnum, char* passbuff) {
 
 int global_notfound = 1;
 #define NUM_WORKER 32
-#define TILE_SIZE 16*NUM_WORKER
+#define TILE_SIZE 32*NUM_WORKER
 int main(int argc, char** argv) {
    if(argc <  2) {
     printf("Usage: %s <password hash>\n",argv[0]);
@@ -139,6 +138,31 @@ int main(int argc, char** argv) {
    else if (who == 2)
      {
        // Kai Fan's code here
+
+       long currpass = 0;
+       int notfound = 1;
+
+       int BatchSize = 1024;
+       char temppassmatch[BatchSize][9];
+       int tempnotfound = 1;;
+       tick_count tstart = tick_count::now();
+    
+       while(notfound) {
+     
+	 parallel_for(blocked_range<int>(0,BatchSize),
+		      [&](blocked_range<int> r){
+			for(int i = r.begin(); i < r.end(); i++) {
+			  genpass(currpass+i,temppassmatch[i]);
+			  if (test(argv[1], temppassmatch[i]) ==0) {
+			    notfound = 0;
+			    strcpy(final_passmatch,temppassmatch[i]);
+			  }
+			}
+		      }
+		      );
+	 currpass += BatchSize;
+       }
+
      }
    else if (who == 2)
      {
