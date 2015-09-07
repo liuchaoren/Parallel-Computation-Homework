@@ -38,6 +38,8 @@ do
 		$PWD/matmul_openmp
 		echo -e "Run openmp Reorg Code"
 		$PWD/matmul_openmp_reorg
+		echo -e "Run Offload Code"
+		$PWD/matmul_offload
 		popd
     fi
   done
