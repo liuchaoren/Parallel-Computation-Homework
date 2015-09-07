@@ -52,6 +52,8 @@ bool parallel_not_found(int* notfound, int N, int& match_index)
 
 #define NUM_WORKER 32 // The number of workers
 #define TILE_SIZE 32*NUM_WORKER  // The size of each batch
+#define pwlimit 100000000
+#define pwlen 8
 int main(int argc, char** argv) {
   if(argc <  2) {
     printf("Usage: %s <password hash>\n",argv[0]);
@@ -239,9 +241,36 @@ int main(int argc, char** argv) {
 	  }
 	}
     }
-  else if (who == 2)
+  else if (who == 3)
     {
       // Chaoren Liu's code here
+      long currpass=0;
+      int notfound = 1;
+      char passmatch[32][pwlen+1];
+  
+      tick_count tstart = tick_count::now();
+      #pragma omp parallel for private(notfound)
+      for(currpass=0; currpass<pwlimit; currpass++) {
+          int threadid = omp_get_thread_num();
+          genpass(currpass, passmatch[threadid]);
+          notfound=test(argv[1], passmatch[threadid]);
+//          printf("the threadid is %d\n", threadid);
+//          if (currpass == 99999999) {
+//             printf("The thread id is %d\n", threadid);
+//             printf("The passmatch is %s\n", passmatch[threadid]);
+//             notfound=test(argv[1], passmatch[threadid]);
+//             printf("the threadid is %d\n", threadid);
+//             printf("The notfound is %d\n", notfound);
+//             printf("the input is %s\n", argv[1]);
+//          }
+          if (notfound == 0) {
+            strcpy(final_passmatch, passmatch[threadid]);                  
+//           strcopy(passmatch_real, passmatch, 9);
+//              printf("found: %s\n",passmatch[threadid]);
+            
+          }
+      }
+      
     }
   else
     printf("The third argument is for choosing whose code, please input 1,2,3 \n");
