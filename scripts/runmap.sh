@@ -33,11 +33,11 @@ do
 		echo -e "Run Serial Code"
 		$PWD/pass_serial `cat keys/99999999` 
 		echo -e "Run openmp Code"
-		$PWD/pass_openmp `cat keys/99999999` 
+		$PWD/pass_openmp `cat keys/99999999` 1 3
 		echo -e "Run cilk Code"
-		$PWD/pass_cilk `cat keys/99999999` 
+		$PWD/pass_cilk `cat keys/99999999` 1 2
 		echo -e "Run tbb Code"
-		$PWD/pass_tbb `cat keys/99999999` 
+		$PWD/pass_tbb `cat keys/99999999` 1 2
 		popd
     fi
   done
