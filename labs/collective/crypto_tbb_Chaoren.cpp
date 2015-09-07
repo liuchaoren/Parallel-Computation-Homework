@@ -8,8 +8,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <omp.h>
-#include <tbb/tick_count.h>
 #include <tbb/tbb.h>
+#include <tbb/tick_count.h>
 
 using namespace tbb;
 
@@ -26,75 +26,22 @@ void getKeys(xorKey* keyList, char** fileList, int numKeys)
 }
 //Given text, a list of keys, the length of the text, and the number of keys, encodes the text
 void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, int numKeys) {
-  int keyLoop=0;
-  int charLoop=0;
+//  int keyLoop=0;
   tick_count tstart = tick_count::now();
-
-  // Change code here and re-compile it to run someone else's implementation
-  // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
-  int who = 2;
-
-  if (who == 1)
-    {
-      // Outer loop: process each component parallelly using map
-      parallel_for(blocked_range<int>(0, ptextlen),
-		   [&](blocked_range<int> r)
-		   {
-		     for (int i = r.begin(); i < r.end(); i++)
-		       {
-			 // Inner loop: process XOR of plain text and keys parallelly using reduce
-			 // However, seems reduction does not boost the performance
-			 /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
-							 char(0),
-							 [&](blocked_range<int> rr, char cipherChar) -> char
-							 {
-							   for (int j = rr.begin(); j < rr.end(); j++)
-							     cipherChar ^= getBit(&(keyList[j]),i);
-							   return cipherChar;
-							 },
-							 [](char x, char y) -> char
-							 {
-							   return x ^ y;
-							 }
-							 ) ^ plainText[i]; */
-			 char cipherChar = plainText[i]; 
-			 for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
-			   cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
-			 }
-			 cypherText[i]=cipherChar;
-		       }
-		   }
-		   );
+// TBB part
+  tbb::parallel_for(
+    tbb::blocked_range<int>(0, ptextlen),
+    [&](tbb::blocked_range<int> r) {
+        for (int i=r.begin(); i<r.end(); i++) {
+            char cipherChar=plainText[i]; 
+            tbb::parallel_for(
+              tbb::blocked_range<int>for(keyLoop=0;keyLoop<numKeys;keyLoop++) {
+                cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
+            }
+            cypherText[i]=cipherChar;
+        }
     }
-  else if (who == 2)
-    {
-      // Kai Fan's code here
-      parallel_for(blocked_range<int>(0,ptextlen),
-		   [&](blocked_range<int> r) 
-		   {
-		     for (int charLoop = r.begin(); charLoop < r.end(); charLoop++) 
-		       {
-			 char cipherChar =
-			   plainText[charLoop] ^ parallel_reduce(blocked_range<int> (0,numKeys), char(0),
-								 [&](blocked_range<int> t, char reducecipherChar)
-								 {
-								   for (int keyLoop = t.begin(); keyLoop < t.end(); keyLoop++)
-								     reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
-								   return reducecipherChar;
-								 },
-								 [](char x, char y) -> char {return x^y;}
-								 );
-			 cypherText[charLoop] = cipherChar;
-		       }
-		   }
-		   );
-
-    }
-  else if (who == 3)
-    {
-      // Chaoren Liu's code here
-    }
-
+  );
   tick_count tend = tick_count::now();
   printf("time for encode = %g seconds\n",(tend-tstart).seconds());
 }
@@ -121,8 +68,6 @@ int main(int argc, char* argv[]) {
   char* rawData = (char*)malloc(sizeof(char)*textLength);
   fread(rawData,textLength,1,rawFile);
   fclose(rawFile);
-
-  printf("textLength = %d, numKeys = %d \n", textLength, numKeys);
 
   // Encrypt
   char* cypherText = (char*)malloc(sizeof(char)*textLength);

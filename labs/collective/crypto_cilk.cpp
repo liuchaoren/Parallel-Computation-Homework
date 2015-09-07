@@ -9,7 +9,9 @@
 #include <sys/stat.h>
 #include <omp.h>
 #include <tbb/tick_count.h>
-#include <tbb/tbb.h>
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
+#include <cilk/reducer_opxor.h>
 
 using namespace tbb;
 
@@ -26,8 +28,6 @@ void getKeys(xorKey* keyList, char** fileList, int numKeys)
 }
 //Given text, a list of keys, the length of the text, and the number of keys, encodes the text
 void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, int numKeys) {
-  int keyLoop=0;
-  int charLoop=0;
   tick_count tstart = tick_count::now();
 
   // Change code here and re-compile it to run someone else's implementation
@@ -37,57 +37,40 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
   if (who == 1)
     {
       // Outer loop: process each component parallelly using map
-      parallel_for(blocked_range<int>(0, ptextlen),
-		   [&](blocked_range<int> r)
-		   {
-		     for (int i = r.begin(); i < r.end(); i++)
-		       {
-			 // Inner loop: process XOR of plain text and keys parallelly using reduce
-			 // However, seems reduction does not boost the performance
-			 /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
-							 char(0),
-							 [&](blocked_range<int> rr, char cipherChar) -> char
-							 {
-							   for (int j = rr.begin(); j < rr.end(); j++)
-							     cipherChar ^= getBit(&(keyList[j]),i);
-							   return cipherChar;
-							 },
-							 [](char x, char y) -> char
-							 {
-							   return x ^ y;
-							 }
-							 ) ^ plainText[i]; */
-			 char cipherChar = plainText[i]; 
-			 for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
-			   cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
-			 }
-			 cypherText[i]=cipherChar;
-		       }
-		   }
-		   );
+      cilk_for(int charLoop=0;charLoop<ptextlen;charLoop++) {
+	char cipherChar=plainText[charLoop]; 
+	// Inner loop: process XOR of plain text and keys parallelly using reduce
+	// However, seems reduction does not boost the performance, actually mush slower than serialize inner loop
+	for(int keyLoop=0;keyLoop<numKeys;keyLoop++) {
+	  cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),charLoop);
+	}
+	cypherText[charLoop]=cipherChar;
+      }
+
+      /*
+      // Outer loop: process each component parallelly using map
+      cilk_for(int charLoop=0;charLoop<ptextlen;charLoop++) {
+      cilk::reducer< cilk::op_xor<char> > parallel_cipherChar(plainText[charLoop]);
+      // Inner loop: process XOR of plain text and keys parallelly using reduce
+      // However, seems reduction does not boost the performance, actually mush slower than serialize inner loop
+      cilk_for(int keyLoop=0;keyLoop<numKeys;keyLoop++) {
+      *parallel_cipherChar ^=  getBit(&(keyList[keyLoop]),charLoop);
+      }
+      cypherText[charLoop] = parallel_cipherChar.get_value();
+      }
+      */
     }
   else if (who == 2)
     {
       // Kai Fan's code here
-      parallel_for(blocked_range<int>(0,ptextlen),
-		   [&](blocked_range<int> r) 
-		   {
-		     for (int charLoop = r.begin(); charLoop < r.end(); charLoop++) 
-		       {
-			 char cipherChar =
-			   plainText[charLoop] ^ parallel_reduce(blocked_range<int> (0,numKeys), char(0),
-								 [&](blocked_range<int> t, char reducecipherChar)
-								 {
-								   for (int keyLoop = t.begin(); keyLoop < t.end(); keyLoop++)
-								     reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
-								   return reducecipherChar;
-								 },
-								 [](char x, char y) -> char {return x^y;}
-								 );
-			 cypherText[charLoop] = cipherChar;
-		       }
-		   }
-		   );
+      cilk_for(int charLoop = 0; charLoop < ptextlen; charLoop++) {
+	char cipherChar = plainText[charLoop]; 
+	cilk::reducer< cilk::op_xor<char> > reducecipherChar(cipherChar);
+	cilk_for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
+	  *reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
+	}
+	cypherText[charLoop] = reducecipherChar.get_value();
+    }
 
     }
   else if (who == 3)

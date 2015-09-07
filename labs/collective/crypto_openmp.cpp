@@ -9,7 +9,6 @@
 #include <sys/stat.h>
 #include <omp.h>
 #include <tbb/tick_count.h>
-#include <tbb/tbb.h>
 
 using namespace tbb;
 
@@ -26,8 +25,6 @@ void getKeys(xorKey* keyList, char** fileList, int numKeys)
 }
 //Given text, a list of keys, the length of the text, and the number of keys, encodes the text
 void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, int numKeys) {
-  int keyLoop=0;
-  int charLoop=0;
   tick_count tstart = tick_count::now();
 
   // Change code here and re-compile it to run someone else's implementation
@@ -37,64 +34,38 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
   if (who == 1)
     {
       // Outer loop: process each component parallelly using map
-      parallel_for(blocked_range<int>(0, ptextlen),
-		   [&](blocked_range<int> r)
-		   {
-		     for (int i = r.begin(); i < r.end(); i++)
-		       {
-			 // Inner loop: process XOR of plain text and keys parallelly using reduce
-			 // However, seems reduction does not boost the performance
-			 /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
-							 char(0),
-							 [&](blocked_range<int> rr, char cipherChar) -> char
-							 {
-							   for (int j = rr.begin(); j < rr.end(); j++)
-							     cipherChar ^= getBit(&(keyList[j]),i);
-							   return cipherChar;
-							 },
-							 [](char x, char y) -> char
-							 {
-							   return x ^ y;
-							 }
-							 ) ^ plainText[i]; */
-			 char cipherChar = plainText[i]; 
-			 for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
-			   cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
-			 }
-			 cypherText[i]=cipherChar;
-		       }
-		   }
-		   );
+#pragma omp parallel for
+      for(int charLoop=0;charLoop<ptextlen;charLoop++) {
+	char cipherChar=plainText[charLoop]; 
+	// Inner loop: process XOR of plain text and keys parallelly using reduce
+	// However, seems reduction does not boost the performance
+	// #pragma omp parallel for reduction(^:cipherChar)
+	for(int keyLoop=0;keyLoop<numKeys;keyLoop++) {
+	  cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),charLoop);
+	}
+	cypherText[charLoop]=cipherChar;
+      }
     }
   else if (who == 2)
     {
       // Kai Fan's code here
-      parallel_for(blocked_range<int>(0,ptextlen),
-		   [&](blocked_range<int> r) 
-		   {
-		     for (int charLoop = r.begin(); charLoop < r.end(); charLoop++) 
-		       {
-			 char cipherChar =
-			   plainText[charLoop] ^ parallel_reduce(blocked_range<int> (0,numKeys), char(0),
-								 [&](blocked_range<int> t, char reducecipherChar)
-								 {
-								   for (int keyLoop = t.begin(); keyLoop < t.end(); keyLoop++)
-								     reducecipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
-								   return reducecipherChar;
-								 },
-								 [](char x, char y) -> char {return x^y;}
-								 );
-			 cypherText[charLoop] = cipherChar;
-		       }
-		   }
-		   );
+#pragma omp parallel for
+      // printf("%d \n",omp_get_num_threads());
+      for(int charLoop=0; charLoop < ptextlen; charLoop++) {
+	char cipherChar = plainText[charLoop]; 
+	//#pragma omp parallel for reduction (^:cipherChar)
+	for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
+	  cipherChar ^= getBit(&(keyList[keyLoop]),charLoop);
+	}
+	cypherText[charLoop]=cipherChar;
+      }
 
     }
   else if (who == 3)
     {
       // Chaoren Liu's code here
     }
-
+  
   tick_count tend = tick_count::now();
   printf("time for encode = %g seconds\n",(tend-tstart).seconds());
 }
@@ -103,13 +74,15 @@ void decode(char* cypherText, char* plainText, xorKey* keyList, int ptextlen, in
   encode(cypherText, plainText, keyList, ptextlen, numKeys); //isn't symmetric key cryptography awesome? 
 }
 
+#define NUM_WORKER 16
+
 int main(int argc, char* argv[]) {
   if(argc<=2)
   {
       printf("Usage: %s <fileToEncrypt> <key1> <key2> ... <key_n>\n",argv[0]);
       return 1;
   }
-
+ 
   // read in the keys
   int numKeys=argc-2;
   xorKey* keyList=(xorKey*)malloc(sizeof(xorKey)*numKeys); // allocate key list
@@ -123,7 +96,7 @@ int main(int argc, char* argv[]) {
   fclose(rawFile);
 
   printf("textLength = %d, numKeys = %d \n", textLength, numKeys);
-
+  omp_set_num_threads(NUM_WORKER);
   // Encrypt
   char* cypherText = (char*)malloc(sizeof(char)*textLength);
   encode(rawData,cypherText,keyList,textLength,numKeys);

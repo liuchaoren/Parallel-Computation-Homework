@@ -3,7 +3,7 @@
 remoteHost=gitlab.oit.duke.edu
 remoteUser=git
 # replace the following line with your group number
-Groups=20
+Groups=4
 remoteRepos=parprog.git
 localCodeDir=tmprepo
 
@@ -33,11 +33,11 @@ do
 		echo -e "Run Serial Code"
 		$PWD/pass_serial `cat keys/99999999` 
 		echo -e "Run openmp Code"
-		$PWD/pass_openmp `cat keys/99999999`
+		$PWD/pass_openmp `cat keys/99999999` 
 		echo -e "Run cilk Code"
-		$PWD/pass_cilk `cat keys/99999999`
+		$PWD/pass_cilk `cat keys/99999999` 
 		echo -e "Run tbb Code"
-		$PWD/pass_tbb `cat keys/99999999`
+		$PWD/pass_tbb `cat keys/99999999` 
 		popd
     fi
   done
