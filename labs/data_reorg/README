@@ -12,14 +12,17 @@ Following the public release of the HeartBleed exploit against OpenSSL, OSNAP ex
 
 In this lab, you are to improve the performance of the matrix multiplication 
 code using data reorganization and loop transormations.  Your task is to 
-evaluate three alternatives to the serial program: 1) openmp parallel without
+evaluate four alternatives to the serial program: 1) openmp parallel without
 any reorganization, 2) serial program with reorganization and 3) openmp 
-parallel with reorganization. 
+parallel with reorganization, 4) openmp parallel with reorganization with offload to Xeon Phi (MIC). 
 
 Performance measurement should only be done 
 for the actual multiply logic. Time spent outside of the 
-matrix_multiply function need not be measured.
-
+matrix_multiply function should not be measured. For the offload program
+you should ensure the timing does not include the time to copy the 
+input/output to/from the MIC. You can ensure this by copying the data to 
+the MIC before starting the timing, and copying the output back after 
+stopping the timing (although this often occurs implicitly by the compiler).
 
 **For the data reorganized versions, you should ensure that the 
 matrix multiply is fully vectorized.***  
@@ -42,8 +45,9 @@ git pull origin
 3. Run the serial program with the command ./matmul_serial. 
 
 4. Write a your new versions of the program.  Follow the convention of 
-matmul_reorg, matmul_openmp, and matmul_openmp_reorg for source and 
-executable files. I will rely on this for my own grading purposes.
+matmul_reorg, matmul_openmp, matmul_openmp_reorg, and matmul_offload 
+for source and executable files. I will rely on this for my own 
+grading purposes.
 
 5. Update the Makefile entries for the other three build targets with 
 compilation commands for source files.
@@ -52,10 +56,16 @@ compilation commands for source files.
 serial program, and your parallel versions with the number of threads set 
 to 32.  Furthermore, plot speedup for your best openmp 
 version as you set OMP_NUM_THREADS to the values [1,4,16,32,64] (use more values
-if you feel like it).  
+if you feel like it), and for your offload version with MIC_OMP_NUM_THREADS set
+to the values [32, 64, 128, 256, default], where default is an exeuction with
+MIC_OMP_NUM_THREADS undefined (for bash use unset MIC_OMP_NUM_THREADS, 
+for tcsh use unsetenv MIC_OMP_NUM_THREADS). 
 
 7. Include your results in a PDF file called results.pdf. This file should
-describe your data reorganization and your parallelism approach. Also include 
+describe your data reorganization and your parallelism approach and a
+short explation/discussion of the results (i.e., what did you expect 
+for results and do the measured results match what you expected, if not why
+do you think not.) Also include 
 a description of the contributions from each group member in the PDF.
 
 8. Commit and push the source files, updated Makefile, and results.pdf to your group repository.  Please do not add the executable files to the repository.
