@@ -32,10 +32,11 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 
   // Change code here and re-compile it to run someone else's implementation
   // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
-  int who = 2;
+  int who = 1;
 
   if (who == 1)
     {
+      /*
       // Outer loop: process each component parallelly using map
       cilk_for(int charLoop=0;charLoop<ptextlen;charLoop++) {
 	char cipherChar=plainText[charLoop]; 
@@ -46,8 +47,8 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 	}
 	cypherText[charLoop]=cipherChar;
       }
+      */
 
-      /*
       // Outer loop: process each component parallelly using map
       cilk_for(int charLoop=0;charLoop<ptextlen;charLoop++) {
       cilk::reducer< cilk::op_xor<char> > parallel_cipherChar(plainText[charLoop]);
@@ -58,7 +59,6 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
       }
       cypherText[charLoop] = parallel_cipherChar.get_value();
       }
-      */
     }
   else if (who == 2)
     {

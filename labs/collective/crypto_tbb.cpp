@@ -51,7 +51,7 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 
   // Change code here and re-compile it to run someone else's implementation
   // 1: Mengke Lian; 2: Kai Fan; 3: Chaoren Liu
-  int who = 2;
+  int who = 1;
 
   if (who == 1)
     {
@@ -63,7 +63,7 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 		       {
 			 // Inner loop: process XOR of plain text and keys parallelly using reduce
 			 // However, seems reduction does not boost the performance
-			 /* cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
+			 cypherText[i] = parallel_reduce(blocked_range<int>(0,numKeys), 
 							 char(0),
 							 [&](blocked_range<int> rr, char cipherChar) -> char
 							 {
@@ -75,12 +75,12 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
 							 {
 							   return x ^ y;
 							 }
-							 ) ^ plainText[i]; */
-			 char cipherChar = plainText[i]; 
+							 ) ^ plainText[i];
+			 /* char cipherChar = plainText[i]; 
 			 for(int keyLoop = 0; keyLoop < numKeys; keyLoop++) {
 			   cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
 			 }
-			 cypherText[i]=cipherChar;
+			 cypherText[i]=cipherChar; */
 		       }
 		   }
 		   );
