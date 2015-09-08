@@ -1,15 +1,17 @@
-default: matmul_serial
+default: all
 
-all: matmul_serial matmul_openmp matmul_cilk matmul_tbb
+all: matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg
+
+OPT = -O2 
 
 matmul_serial: matmul_serial.c
-	icpc -std=c++11 -o matmul_serial matmul_serial.c -fopenmp
+	icpc $(OPT) -std=c++11 -o matmul_serial matmul_serial.c -fopenmp
 
 matmul_openmp:
 
-matmul_cilk:
+matmul_reorg:
 
-matmul_tbb:
+matmul_openmp_reorg:
 
 clean:
-	rm matmul_serial matmul_openmp matmul_cilk matmul_tbb 2>/dev/null
+	rm matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg
