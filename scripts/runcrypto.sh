@@ -31,13 +31,13 @@ do
 		pushd $PWD/$localRepoDir/labs/collective
 		make
 		echo -e "Run Serial Code"
-		$PWD/crypto_serial US.dic keys/*
+		(ulimit -t 15; $PWD/crypto_serial US.dic keys/*)
 		echo -e "Run openmp Code"
-		$PWD/crypto_openmp US.dic keys/*
+		(ulimit -t 300; $PWD/crypto_openmp US.dic keys/*)
 		echo -e "Run cilk Code"
-		$PWD/crypto_cilk US.dic keys/*
+		(ulimit -t 300; $PWD/crypto_cilk US.dic keys/*)
 		echo -e "Run tbb Code"
-		$PWD/crypto_tbb US.dic keys/*
+		(ulimit -t 300; $PWD/crypto_tbb US.dic keys/*)
 		popd
     fi
   done

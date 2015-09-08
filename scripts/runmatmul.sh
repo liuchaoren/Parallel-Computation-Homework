@@ -31,15 +31,15 @@ do
 		pushd $PWD/$localRepoDir/labs/data_reorg
 		make
 		echo -e "Run Serial Code"
-		$PWD/matmul_serial
+		(ulimit -t 300; $PWD/matmul_serial)
 		echo -e "Run Serial Reorg Code"
-		$PWD/matmul_reorg
+		(ulimit -t 300; $PWD/matmul_reorg)
 		echo -e "Run openmp Code"
-		$PWD/matmul_openmp
+		(ulimit -t 5000; $PWD/matmul_openmp)
 		echo -e "Run openmp Reorg Code"
-		$PWD/matmul_openmp_reorg
+		(ulimit -t 300; $PWD/matmul_openmp_reorg)
 		echo -e "Run Offload Code"
-		$PWD/matmul_offload
+		(ulimit -t 300; $PWD/matmul_offload)
 		popd
     fi
   done
