@@ -23,29 +23,34 @@
 #define P ORDER
 #define M ORDER
 
-// Use linear memory to store all matrices
-double A[N*P];
-double B[P*M];
-double C[N*M];
+double A[N][P];
+double B[P][M];
+double C[N][M];
 
 // Initialize the matrices (uniform values to make an easier check)
 void matrix_init(void) {
   // A[N][P] -- Matrix A
 #pragma omp parallel for
-  for (int i=0; i<N*P; i++) {
-    A[i] = AVAL;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<P; j++) {
+      A[i][j] = AVAL;
+    }
   }
 
   // B[P][M] -- Matrix B
 #pragma omp parallel for
-  for (int i=0; i<P*M; i++) {
-    B[i] = BVAL;
+  for (int i=0; i<P; i++) {
+    for (int j=0; j<M; j++) {
+      B[i][j] = BVAL;
+    }
   }
 
   // C[N][M] -- result matrix for AB
 #pragma omp parallel for
-  for (int i=0; i<N*M; i++) {
-    C[i] = 0.0;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<M; j++) {
+      C[i][j] = 0.0;
+    }
   }
 }
 
@@ -59,12 +64,11 @@ double matrix_multiply(void) {
   // the timer value is captured.
   start = omp_get_wtime(); 
 
-  // Interchange loops for j and k so that innermost loop access consecutive memory addresses
 #pragma omp parallel for 
   for (int i=0; i<N; i++){
     for (int j=0; j<M; j++){
-      for (int k=0; k<P; k++){
-	 C[i*M+j] += A[i*P+k] * B[k*M+j];
+      for(int k=0; k<P; k++){
+	C[i][j] += A[i][k] * B[k][j];
       }
     }
   }
@@ -83,9 +87,11 @@ int check_result(void) {
   double v  = AVAL * BVAL * ORDER;
 
 #pragma omp parallel for reduction(+:ee)
-  for (int i=0; i<N*M; i++) {
-      e = C[i] - v;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<M; j++) {
+      e = C[i][j] - v;
       ee += e * e;
+    }
   }
 
   if (ee > TOL) {
