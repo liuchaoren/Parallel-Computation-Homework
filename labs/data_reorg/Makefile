@@ -16,5 +16,9 @@ matmul_reorg:
 matmul_openmp_reorg:
 	icpc $(OPT) -std=c++11 -o matmul_openmp_reorg matmul_openmp_reorg.cpp -fopenmp -vec-report=5
 
+matmul_offload:
+	icpc $(OPT) -std=c++11 -o matmul_offload matmul_offload.cpp -fopenmp
+
+
 clean:
-	rm -f matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg matmul_openmp.optrpt  matmul_reorg.optrpt matmul_openmp_reorg.optrpt
+	rm -f matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg matmul_offload  matmul_openmp.optrpt  matmul_reorg.optrpt matmul_openmp_reorg.optrpt
