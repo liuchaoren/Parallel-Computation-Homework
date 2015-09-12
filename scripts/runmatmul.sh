@@ -3,7 +3,7 @@
 remoteHost=gitlab.oit.duke.edu
 remoteUser=git
 # replace the following line with your group number
-Groups=4
+Groups=20
 remoteRepos=parprog.git
 localCodeDir=tmprepo
 
@@ -28,16 +28,18 @@ do
 		cloneCmdRun=$($cloneCmd)
 		echo -e "Running: \n$ $cloneCmd"
 		echo -e "${cloneCmdRun}"
-		pushd $PWD/$localRepoDir/labs/collective
+		pushd $PWD/$localRepoDir/labs/data_reorg
 		make
 		echo -e "Run Serial Code"
-		(ulimit -t 15; $PWD/crypto_serial US.dic keys/*)
+		(ulimit -t 300; $PWD/matmul_serial)
+		echo -e "Run Serial Reorg Code"
+		(ulimit -t 300; $PWD/matmul_reorg)
 		echo -e "Run openmp Code"
-		(ulimit -t 300; $PWD/crypto_openmp US.dic keys/*)
-		echo -e "Run cilk Code"
-		(ulimit -t 300; $PWD/crypto_cilk US.dic keys/*)
-		echo -e "Run tbb Code"
-		(ulimit -t 300; $PWD/crypto_tbb US.dic keys/*)
+		(ulimit -t 5000; $PWD/matmul_openmp)
+		echo -e "Run openmp Reorg Code"
+		(ulimit -t 300; $PWD/matmul_openmp_reorg)
+		echo -e "Run Offload Code"
+		(ulimit -t 300; $PWD/matmul_offload)
 		popd
     fi
   done
