@@ -8,16 +8,17 @@ matmul_serial: matmul_serial.c
 	icpc $(OPT) -std=c++11 -o matmul_serial matmul_serial.c -fopenmp
 
 matmul_openmp:
-	icpc $(OPT) -std=c++11 -o matmul_openmp matmul_openmp.cpp -fopenmp -vec-report=5
+	# icpc $(OPT) -std=c++11 -o matmul_openmp matmul_openmp.cpp -fopenmp -vec-report=5
+	icpc $(OPT) -std=c++11 -o matmul_openmp matmul_openmp.cpp -fopenmp -fast
 
 matmul_reorg:
-	icpc $(OPT) -std=c++11 -o matmul_reorg matmul_reorg.cpp -fopenmp -vec-report=5
+	icpc $(OPT) -std=c++11 -o matmul_reorg matmul_reorg1.cpp -fopenmp -fast
 
 matmul_openmp_reorg:
-	icpc $(OPT) -std=c++11 -o matmul_openmp_reorg matmul_openmp_reorg.cpp -fopenmp -vec-report=5
+	icpc $(OPT) -std=c++11 -o matmul_openmp_reorg matmul_openmp_reorg.cpp -fopenmp -fast
 
 matmul_offload:
-	icpc $(OPT) -std=c++11 -o matmul_offload matmul_offload.cpp -fopenmp
+	icpc $(OPT) -std=c++11 -o matmul_offload matmul_offload1.cpp -fopenmp
 
 
 clean:
