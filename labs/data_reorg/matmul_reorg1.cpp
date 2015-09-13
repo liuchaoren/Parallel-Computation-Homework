@@ -24,8 +24,15 @@
 #define M ORDER
 
 #define D 64
+#define ND N/D
+#define MD M/D
+#define PD P/D
 
 // Use linear memory to store all matrices
+// double A[N*P];
+// double B[P*M];
+// double C[N*M];
+
 double A[D][D][N/D][P/D];
 double B[D][D][P/D][M/D];
 double C[D][D][N/D][M/D];
@@ -38,6 +45,7 @@ void matrix_init(void) {
       for (int ii = 0; ii < N/D; ii++) {
 	for (int jj = 0; jj < P/D; jj++) {
 	  A[i][j][ii][jj] = AVAL;
+	  // A[(i*D+j)*ND*PD+ii*PD+jj] = AVAL;
 	}
       }
     }
@@ -49,6 +57,7 @@ void matrix_init(void) {
       for (int ii = 0; ii < P/D; ii++) {
 	for (int jj = 0; jj < M/D; jj++) {
 	  B[i][j][ii][jj] = BVAL;
+	  // B[(i*D+j)*PD*MD+ii*MD+jj] = BVAL;
 	}
       }
     }
@@ -60,6 +69,7 @@ void matrix_init(void) {
       for (int ii = 0; ii < N/D; ii++) {
 	for (int jj = 0; jj < M/D; jj++) {
 	  C[i][j][ii][jj] = 0.0;
+	  // C[(i*D+j)*ND*MD+ii*MD+jj] = 0.0;
 	}
       }
     }
@@ -77,7 +87,7 @@ double matrix_multiply(void) {
   start = omp_get_wtime(); 
 
   // Interchange loops for j and k so that innermost loop access consecutive memory addresses
-#pragma omp parallel for collapse(4)
+  // #pragma omp parallel for collapse(5)
   for (int i = 0; i < D; i++) {
     for (int j = 0; j < D; j++) {
       for (int k = 0; k < D; k++) {
@@ -85,6 +95,7 @@ double matrix_multiply(void) {
 	  for (int kk = 0; kk < P/D; kk++) {
 	    for (int jj = 0; jj < M/D; jj++) {	  	    
 	      C[i][j][ii][jj] += A[i][k][ii][kk] * B[k][j][kk][jj];
+	      // C[(i*D+j)*ND*MD+ii*MD+jj] += A[(i*D+k)*ND*PD+ii*PD+kk] * B[(k*D+j)*PD*MD+kk*MD+jj];
 	    }
 	  }
 	}
@@ -110,6 +121,7 @@ int check_result(void) {
       for (int ii = 0; ii < N/D; ii++) {
 	for (int jj = 0; jj < M/D; jj++) {
 	  e = C[i][j][ii][jj] - v;
+	  // e = C[(i*D+j)*ND*MD+ii*MD+jj] - v;
 	  ee = e * e;
 	}
       }
