@@ -15,17 +15,37 @@ You have been provided code for a serial gaussian blur filter and code for Prewi
 ################################################################################
 #  What to do
 ################################################################################
-
 1. Check out the repository
 
-git pull <teacher repo remote> master
+git pull origin
 
-2. Run the Makefile and look at the source code and output of the serial program.
+2. Run the Makefile and look at the source code and output of the program.
+I've provided all the entries in the Makefile, so don't worry when make fails
+to compile the programs you have not yet written.  This code reads in a bitmap file (img.bmp) and produces a blurred bitmapt (img-new.bmp)
 
-3. Write a parallel version of the program in Cilk, TBB, and OpenMP.
+3. Run the serial program with the command ./stencil_serial. 
 
-4. Update the Makefile entries for the other three build targets with compilation commands for source files.
+4. Write a your new versions of the program.  Follow the convention of 
+stencil_openmp, stencil_offload, stencil_cuda 
+for source and executable files. I will rely on this for my own 
+grading purposes. Note that the cuda source should be named stencil_cuda.cu
 
-5. Integrate the Prewitt kernels into one or all of your implementations so that you generate output highlighting the edges (see the example in the slides for the OSNAP logo).
+6. Get timing results for all implementations.  This should include the 
+serial program, and your parallel versions (use default thread numbers for
+openmp and offload. and 256 threads/block for cuda)
+Furthermore, plot speedup for your best openmp 
+version as you set OMP_NUM_THREADS to the values [1,4,16,32,64] (use more values
+if you feel like it), and for your offload version with MIC_OMP_NUM_THREADS set
+to the values [32, 64, 128, 256, default], where default is an exeuction with
+MIC_OMP_NUM_THREADS undefined (for bash use unset MIC_OMP_NUM_THREADS, 
+for tcsh use unsetenv MIC_OMP_NUM_THREADS), and for CUDA use [16,64,256,1024] 
+threads per block (the number of blocks should be adjusted accordingly).
 
-6. Commit the source files and updated Makefile to your repository.
+7. Include your results in a PDF file called results.pdf. This file should
+describe your data reorganization and your parallelism approach and a
+short explation/discussion of the results (i.e., what did you expect 
+for results and do the measured results match what you expected, if not why
+do you think not.) Also include 
+a description of the contributions from each group member in the PDF.
+
+8. Commit and push the source files, updated Makefile, and results.pdf to your group repository.  Please do not add the executable files to the repository.
