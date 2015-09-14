@@ -22,8 +22,27 @@ void getKeys(xorKey* keyList, char** fileList, int numKeys)
   for(keyLoop=0;keyLoop<numKeys;keyLoop++)
   {
      readKey(&(keyList[keyLoop]), fileList[keyLoop]);
-  }
-}
+  } }
+
+
+class XORsum {
+    xorKey* my_keyList;
+    int charLoop;
+    public:
+        char cipherChar;
+        void operator() (const blocked_range<int>& r) {
+            xorKey* keyList = my_keyList;
+            for(int keyLoop=r.begin(); keyLoop != r.end(); keyLoop++) {
+                cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),charLoop);
+            }
+        }
+        
+        XORsum(XORsum& x, split) : my_keyList(x.my_keyList), charLoop(x.charLoop), cipherChar(char(0)) {}
+        void join(const XORsum& y) {cipherChar=cipherChar ^ y.cipherChar;}
+        XORsum(xorKey* keyList, int charLoop) : my_keyList(keyList), charLoop(charLoop), cipherChar(char(0)) {}
+};
+
+
 //Given text, a list of keys, the length of the text, and the number of keys, encodes the text
 void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, int numKeys) {
 //  int keyLoop=0;
@@ -33,12 +52,13 @@ void encode(char* plainText, char* cypherText, xorKey* keyList, int ptextlen, in
     tbb::blocked_range<int>(0, ptextlen),
     [&](tbb::blocked_range<int> r) {
         for (int i=r.begin(); i<r.end(); i++) {
-            char cipherChar=plainText[i]; 
-            tbb::parallel_for(
-              tbb::blocked_range<int>for(keyLoop=0;keyLoop<numKeys;keyLoop++) {
-                cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
-            }
-            cypherText[i]=cipherChar;
+            XORsum xorchar(keyList, i);
+            parallel_reduce(tbb::blocked_range<int>(0, numKeys), xorchar); 
+//            for(keyLoop=0;keyLoop<numKeys;keyLoop++) {
+//                cipherChar=cipherChar ^ getBit(&(keyList[keyLoop]),i);
+//            }
+//            cypherText[i]=cipherChar;
+            cypherText[i]=plainText[i] ^ xorchar.cipherChar; 
         }
     }
   );
