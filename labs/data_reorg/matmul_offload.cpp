@@ -23,41 +23,76 @@
 #define P ORDER
 #define M ORDER
 
+#define D 256
+#define ND N/D
+#define MD M/D
+#define PD P/D
+
 // Use linear memory to store all matrices
 #pragma offload_attribute(push,target(mic))
 double A[N*P] __attribute__((aligned(64)));
 double B[P*M] __attribute__((aligned(64)));
 double C[N*M] __attribute__((aligned(64)));
+// double A[D][D][N/D][P/D] __attribute__((aligned(64)));
+// double B[D][D][P/D][M/D] __attribute__((aligned(64)));
+// double C[D][D][N/D][M/D] __attribute__((aligned(64)));
 #pragma offload_attribute(pop)
 
 // Initialize the matrices (uniform values to make an easier check)
 void matrix_init(void) {
-  // A[N][P] -- Matrix A
-#pragma omp parallel for
-  for (int i=0; i<N*P; i++) {
-    A[i] = AVAL;
+// A[N][P] -- Matrix A
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < P/D; jj++) {
+	  // A[i][j][ii][jj] = AVAL;
+	  A[(i*D+j)*ND*PD+ii*PD+jj] = AVAL;
+	}
+      }
+    }
   }
 
   // B[P][M] -- Matrix B
-#pragma omp parallel for
-  for (int i=0; i<P*M; i++) {
-    B[i] = BVAL;
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < P/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // B[i][j][ii][jj] = BVAL;
+	  B[(i*D+j)*MD*MD+ii*MD+jj] = BVAL;
+	}
+      }
+    }
   }
-
+  
   // C[N][M] -- result matrix for AB
-#pragma omp parallel for
-  for (int i=0; i<N*M; i++) {
-    C[i] = 0.0;
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // C[i][j][ii][jj] = 0.0;
+	  C[(i*D+j)*ND*MD+ii*MD+jj] = 0.0;
+	}
+      }
+    }
   }
 }
 
 // The actual mulitplication function, totally naive
 double matrix_multiply(void) {
   double start, end;
+  const int NM = ND*MD;
+  const int NP = ND*PD;
+  const int PM = PD*MD;
 
   // Copy values of input matrices A,B,C from host to mic
 #pragma offload target(mic) in(A,B,C)
   {}
+
+  int idx_C, idx_A, idx_B;
+  int i,j,k,ii,jj,kk;
 
   // timer for the start of the computation
   // If you do any dynamic reorganization, 
@@ -67,12 +102,22 @@ double matrix_multiply(void) {
 
   // Interchange loops for j and k so that innermost loop access consecutive memory addresses
 #pragma offload target(mic)
-#pragma omp parallel for // adding simd doubles running times 
-  for (int i=0; i<N; i++){
-    for (int k=0; k<P; k++){
-      double temp = A[i*P+k];
-      for (int j=0; j<M; j++){
-	 C[i*M+j] += temp * B[k*M+j];
+#pragma omp parallel for private(i,j,k,ii,jj,kk,idx_C,idx_A,idx_B) collapse(3)
+  for (i = 0; i < D; i++) {
+    for (k = 0; k < D; k++) {
+      for (j = 0; j < D; j++) {
+	for (ii = 0; ii < N/D; ii++) {
+	  idx_C = (i*D+j)*NM+ii*MD;
+	  for (kk = 0; kk < P/D; kk++) {
+	    idx_A = (i*D+k)*NP+ii*PD+kk;
+	    idx_B = (k*D+j)*PM+kk*MD;
+	    for (jj = 0; jj < M/D; jj++) {	  	    
+	      // C[i][j][ii][jj] += A[i][k][ii][kk] * B[k][j][kk][jj];
+	      // C[(i*D+j)*ND*MD+ii*MD+jj] += A[(i*D+k)*ND*PD+ii*PD+kk] * B[(k*D+j)*PD*MD+kk*MD+jj];
+	      C[idx_C+jj] += A[idx_A] * B[idx_B+jj];
+	    }
+	  }
+	}
       }
     }
   }
@@ -95,10 +140,17 @@ int check_result(void) {
   double ee = 0.0;
   double v  = AVAL * BVAL * ORDER;
 
-#pragma omp parallel for reduction(+:ee)
-  for (int i=0; i<N*M; i++) {
-      e = C[i] - v;
-      ee += e * e;
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // e = C[i][j][ii][jj] - v;
+	  e = C[(i*D+j)*ND*MD+ii*MD+jj] - v;
+	  ee = e * e;
+	}
+      }
+    }
   }
 
   if (ee > TOL) {

@@ -23,32 +23,65 @@
 #define P ORDER
 #define M ORDER
 
+#define D 64
+#define ND N/D
+#define MD M/D
+#define PD P/D
+
 // Use linear memory to store all matrices
 double A[N*P];
 double B[P*M];
 double C[N*M];
 
+// double A[D][D][N/D][P/D];
+// double B[D][D][P/D][M/D];
+// double C[D][D][N/D][M/D];
+
 // Initialize the matrices (uniform values to make an easier check)
 void matrix_init(void) {
-  // A[N][P] -- Matrix A
-  for (int i=0; i<N*P; i++) {
-    A[i] = AVAL;
+// A[N][P] -- Matrix A
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < P/D; jj++) {
+	  // A[i][j][ii][jj] = AVAL;
+	  A[(i*D+j)*ND*PD+ii*PD+jj] = AVAL;
+	}
+      }
+    }
   }
 
   // B[P][M] -- Matrix B
-  for (int i=0; i<P*M; i++) {
-    B[i] = BVAL;
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < P/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // B[i][j][ii][jj] = BVAL;
+	  B[(i*D+j)*PD*MD+ii*MD+jj] = BVAL;
+	}
+      }
+    }
   }
-
+  
   // C[N][M] -- result matrix for AB
-  for (int i=0; i<N*M; i++) {
-    C[i] = 0.0;
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // C[i][j][ii][jj] = 0.0;
+	  C[(i*D+j)*ND*MD+ii*MD+jj] = 0.0;
+	}
+      }
+    }
   }
 }
 
 // The actual mulitplication function, totally naive
 double matrix_multiply(void) {
   double start, end;
+  const int NM = ND*MD;
+  const int NP = ND*PD;
+  const int PM = PD*MD;
 
   // timer for the start of the computation
   // If you do any dynamic reorganization, 
@@ -56,13 +89,22 @@ double matrix_multiply(void) {
   // the timer value is captured.
   start = omp_get_wtime(); 
 
-  // Interchange loops for j and k so that innermost loop access consecutive memory addresses
-#pragma simd
-  for (int i=0; i<N; i++){
-    for (int k=0; k<P; k++){
-      double temp = A[i*P+k];
-      for (int j=0; j<M; j++){
-	 C[i*M+j] += temp * B[k*M+j];
+  // #pragma omp parallel for collapse(2)
+  for (int i = 0; i < D; i++) {
+    for (int k = 0; k < D; k++) {
+      for (int j = 0; j < D; j++) {
+	for (int ii = 0; ii < N/D; ii++) {
+	  int idx_C = (i*D+j)*NM+ii*MD;
+	  for (int kk = 0; kk < P/D; kk++) {
+	    int idx_A = (i*D+k)*NP+ii*PD+kk;
+	    int idx_B = (k*D+j)*PM+kk*MD;
+	    for (int jj = 0; jj < M/D; jj++) {	  	    
+	      // C[i][j][ii][jj] += A[i][k][ii][kk] * B[k][j][kk][jj];
+	      // C[(i*D+j)*ND*MD+ii*MD+jj] += A[(i*D+k)*ND*PD+ii*PD+kk] * B[(k*D+j)*PD*MD+kk*MD+jj];
+	      C[idx_C+jj] += A[idx_A] * B[idx_B+jj];
+	    }
+	  }
+	}
       }
     }
   }
@@ -80,9 +122,16 @@ int check_result(void) {
   double ee = 0.0;
   double v  = AVAL * BVAL * ORDER;
 
-  for (int i=0; i<N*M; i++) {
-      e = C[i] - v;
-      ee += e * e;
+  for (int i = 0; i < D; i++) {
+    for (int j = 0; j < D; j++) {
+      for (int ii = 0; ii < N/D; ii++) {
+	for (int jj = 0; jj < M/D; jj++) {
+	  // e = C[i][j][ii][jj] - v;
+	  e = C[(i*D+j)*ND*MD+ii*MD+jj] - v;
+	  ee = e * e;
+	}
+      }
+    }
   }
 
   if (ee > TOL) {
