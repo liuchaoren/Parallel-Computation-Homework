@@ -1,14 +1,21 @@
-all: stencil_serial stencil_openmp stencil_cilk
+all: stencil_serial stencil_cuda stencil_openmp stencil_offload stencil_cuda
 
-stencil_serial: stencil_serial.cpp
-	icpc -std=c++11 -o stencil_serial stencil_serial.cpp -Wall -Wextra -lopencv_core -lopencv_highgui -lm
+OPT = -O2
 
-stencil_openmp: 
+stencil_serial: stencil_serial.c bmploader.o
+	icpc $(OPT) -o stencil_serial stencil_serial.c bmploader.o -fopenmp
 
-stencil_cilk: 
+stencil_openmp: stencil_openmp.c bmploader.o
+	icpc $(OPT) -o stencil_openmp stencil_openmp.c bmploader.o -fopenmp
 
+stencil_offload: stencil_offload.c bmploader.o
+	icpc $(OPT) -o stencil_offload stencil_offload.c bmploader.o -fopenmp
+
+stencil_cuda: stencil_cuda.cu bmploader.o
+	nvcc $(OPT) -o stencil_cuda stencil_cuda.cu bmploader.o -Xcompiler -fopenmp
+
+bmploader.o: bmploader.c
+	g++ $(OPT) -c bmploader.c
 
 clean:
-	rm -f *.o stencil_serial stencil_openmp stencil_cilk
-	
-.PHONY: clean
+	rm *.o stencil_serial stencil_cuda stencil_openmp stencil_offload 

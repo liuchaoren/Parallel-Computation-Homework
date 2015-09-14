@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
        }
 
      }
-   else if (who == 2)
+   else if (who == 3)
      {
        // Chaoren Liu's code here
      }

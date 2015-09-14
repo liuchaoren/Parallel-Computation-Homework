@@ -34,11 +34,11 @@ do
 		(ulimit -t 300; $PWD/pass_serial `cat keys/99999999`)
 		ulimit -t
 		echo -e "$Group Run openmp Code"
-		(ulimit -t 10000; $PWD/pass_openmp `cat keys/99999999`)
+		(ulimit -t 10000; $PWD/pass_openmp `cat keys/99999999` 1 3)
 		echo -e "$Group Run cilk Code"
-		(ulimit -t 10000; $PWD/pass_cilk `cat keys/99999999`)
+		(ulimit -t 10000; $PWD/pass_cilk `cat keys/99999999` 1 2)
 		echo -e "$Group Run tbb Code"
-		(ulimit -t 10000; $PWD/pass_tbb `cat keys/99999999`)
+		(ulimit -t 10000; $PWD/pass_tbb `cat keys/99999999` 1 2)
 		popd
     fi
   done
