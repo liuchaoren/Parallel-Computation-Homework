@@ -1,6 +1,6 @@
 default: all
 
-all: matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg
+all: matmul_serial matmul_reorg matmul_openmp matmul_openmp_reorg matmul_offload
 
 OPT = -O2 
 
