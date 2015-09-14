@@ -1,0 +1,6 @@
+stencil_serial
+stencil_openmp
+stencil_offload
+stencil_cuda
+img-new.bmp
+bmploader.o
