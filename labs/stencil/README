@@ -10,7 +10,7 @@ The stencil pattern operates on tiles of elements within a dataset.
 
 OSNAP is investigating computer vision to aid in detection and classification of UFOs. One of the common first steps for computer vision is to compute edges. Counter intuitively, we get better edges if the image is blurred before applying a gradient filter.
 
-You have been provided code for a serial gaussian blur filter and code for Prewitt kernels to help highlight edges. Please improve the performance using parallelism and add the Prewitt gradient filters to the image processing.
+You have been provided code for a serial simple mean filter for blurring the image.
 
 ################################################################################
 #  What to do
@@ -21,14 +21,18 @@ git pull origin
 
 2. Run the Makefile and look at the source code and output of the program.
 I've provided all the entries in the Makefile, so don't worry when make fails
-to compile the programs you have not yet written.  This code reads in a bitmap file (img.bmp) and produces a blurred bitmapt (img-new.bmp)
+to compile the programs you have not yet written.  This code reads in a bitmap file as its only command line argument and produces a blurred bitmap (img-new.bmp)
 
-3. Run the serial program with the command ./stencil_serial. 
+3. Run the serial program with the command ./stencil_serial img.bmp.  To test
+a small input image.  You can run it with /tmp/bigimg.bmp to test with a
+larger image.
 
 4. Write a your new versions of the program.  Follow the convention of 
 stencil_openmp, stencil_offload, stencil_cuda 
 for source and executable files. I will rely on this for my own 
 grading purposes. Note that the cuda source should be named stencil_cuda.cu
+Apply whatever source code and data transformation you feel are necessary to
+achieve good performance.
 
 6. Get timing results for all implementations.  This should include the 
 serial program, and your parallel versions (use default thread numbers for
@@ -39,7 +43,7 @@ if you feel like it), and for your offload version with MIC_OMP_NUM_THREADS set
 to the values [32, 64, 128, 256, default], where default is an exeuction with
 MIC_OMP_NUM_THREADS undefined (for bash use unset MIC_OMP_NUM_THREADS, 
 for tcsh use unsetenv MIC_OMP_NUM_THREADS), and for CUDA use [16,64,256,1024] 
-threads per block (the number of blocks should be adjusted accordingly).
+threads per block (the number of blocks should be adjusted accordingly). 
 
 7. Include your results in a PDF file called results.pdf. This file should
 describe your data reorganization and your parallelism approach and a
