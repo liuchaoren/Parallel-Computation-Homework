@@ -18,53 +18,66 @@ typedef struct pixel {
 	float x, y, z;
 } Pixel;
 
-
+__global__
 void filter(Pixel *myimg, Pixel *oimg, int rows, int cols)
 {
-  for (uint64_t y = 1; y < rows-1; y++)
-    for (uint64_t x = 1; x < cols-1; x++) {
-        oimg[idx(y,x)].z = 
-          (myimg[idx(y,x)].z
-           + myimg[idx(y,x-1)].z 
-           + myimg[idx(y,x+1)].z 
-           + myimg[idx(y-1,x)].z
-           + myimg[idx(y-1,x-1)].z 
-           + myimg[idx(y-1,x+1)].z 
-           + myimg[idx(y+1,x)].z
-           + myimg[idx(y+1,x-1)].z 
-           + myimg[idx(y+1,x+1)].z)/9;
+  int x = threadIdx.x + blockDim.x*blockIdx.x;
+  int y = threadIdx.y + blockDim.y*blockIdx.y;
+  
+  if (x > 0 && x < cols-1 && y > 0 && y < rows-1)
+    {
+      oimg[idx(y,x)].z = 
+	(myimg[idx(y,x)].z
+	 + myimg[idx(y,x-1)].z 
+	 + myimg[idx(y,x+1)].z 
+	 + myimg[idx(y-1,x)].z
+	 + myimg[idx(y-1,x-1)].z 
+	 + myimg[idx(y-1,x+1)].z 
+	 + myimg[idx(y+1,x)].z
+	 + myimg[idx(y+1,x-1)].z 
+	 + myimg[idx(y+1,x+1)].z)/9;
 
-        oimg[idx(y,x)].y = 
-         (myimg[idx(y,x)].y 
-          + myimg[idx(y,x-1)].y 
-          + myimg[idx(y,x+1)].y 
-          + myimg[idx(y-1,x)].y 
-          + myimg[idx(y-1,x-1)].y 
-          + myimg[idx(y-1,x+1)].y 
-          + myimg[idx(y+1,x)].y 
-          + myimg[idx(y+1,x-1)].y 
-          + myimg[idx(y+1,x+1)].y)/9;
+      oimg[idx(y,x)].y = 
+	(myimg[idx(y,x)].y 
+	 + myimg[idx(y,x-1)].y 
+	 + myimg[idx(y,x+1)].y 
+	 + myimg[idx(y-1,x)].y 
+	 + myimg[idx(y-1,x-1)].y 
+	 + myimg[idx(y-1,x+1)].y 
+	 + myimg[idx(y+1,x)].y 
+	 + myimg[idx(y+1,x-1)].y 
+	 + myimg[idx(y+1,x+1)].y)/9;
 
-        oimg[idx(y,x)].x = 
-         (myimg[idx(y,x)].x 
-          + myimg[idx(y,x-1)].x 
-          + myimg[idx(y,x+1)].x 
-          + myimg[idx(y-1,x)].x 
-          + myimg[idx(y-1,x-1)].x 
-          + myimg[idx(y-1,x+1)].x 
-          + myimg[idx(y+1,x)].x 
-          + myimg[idx(y+1,x-1)].x 
-          + myimg[idx(y+1,x+1)].x)/9;
-      }
+      oimg[idx(y,x)].x = 
+	(myimg[idx(y,x)].x 
+	 + myimg[idx(y,x-1)].x 
+	 + myimg[idx(y,x+1)].x 
+	 + myimg[idx(y-1,x)].x 
+	 + myimg[idx(y-1,x-1)].x 
+	 + myimg[idx(y-1,x+1)].x 
+	 + myimg[idx(y+1,x)].x 
+	 + myimg[idx(y+1,x-1)].x 
+	 + myimg[idx(y+1,x+1)].x)/9;
+    }
 }
 
 double  apply_stencil(const int rows, const int cols, Pixel * const in, Pixel * const out) {
+  Pixel *d_in, *d_out;
+  cudaMalloc(&d_in, rows*cols*sizeof(Pixel));
+  cudaMalloc(&d_out, rows*cols*sizeof(Pixel));
+  cudaMemcpy(d_in, in, rows*cols*sizeof(Pixel), cudaMemcpyHostToDevice);
 
-	double tstart, tend;
-      	tstart = omp_get_wtime();
-	filter(in, out, rows, cols);
-        tend = omp_get_wtime();
-	return(tend-tstart);
+  const int tile_size = 32;
+  const dim3 blockSize(tile_size,tile_size,1);
+  const dim3 gridSize((cols+tile_size-1)/tile_size,(rows+tile_size-1)/tile_size,1);
+
+  double tstart, tend;
+  tstart = omp_get_wtime();
+  filter<<<gridSize, blockSize>>>(d_in, d_out, rows, cols);
+  tend = omp_get_wtime();
+
+  cudaMemcpy(out, d_out, rows*cols*sizeof(Pixel), cudaMemcpyDeviceToHost);
+  return(tend-tstart);
 }
 
 // main read, call filter, write new image
@@ -77,7 +90,7 @@ int main(int argc, char **argv)
   Pixel *img,*oimg;
   uint64_t x,y;
   uint64_t img_size;
-  double start, end;
+  //double start, end;
   if(argc != 2) {
     printf("Usage: %s imageName\n", argv[0]);
     return 1;
