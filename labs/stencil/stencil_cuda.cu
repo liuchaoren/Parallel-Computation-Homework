@@ -15,49 +15,75 @@ extern "C" void WriteBMPFile(uchar3 **img, BMPHeader hdr, BMPInfoHeader infoHdr,
 #define idx(A,B) ((A) * cols + (B))
 
 typedef struct pixel {
-	float x, y, z;
+  float x, y, z;
 } Pixel;
+
+const int tile_size = 32;
 
 __global__
 void filter(Pixel *myimg, Pixel *oimg, int rows, int cols)
 {
+  __shared__ Pixel temp[tile_size+2][tile_size+2];
+
   int x = threadIdx.x + blockDim.x*blockIdx.x;
   int y = threadIdx.y + blockDim.y*blockIdx.y;
-  
+
+  int xx = threadIdx.x+1;
+  int yy = threadIdx.y+1;
+
+  int Dx = x+blockDim.x < cols ? blockDim.x : cols-x-1;
+  int Dy = y+blockDim.y < rows ? blockDim.y : rows-y-1;
+      	 
+  // Copy pixels to shared memory
+  if (x < cols && y < rows)
+    {
+      // Interior pixels
+      temp[yy][xx] = myimg[idx(y,x)];
+      // Left & right side pixels
+      if(threadIdx.x == 0)
+      	{
+	  temp[yy][0] = myimg[idx(y,x-1)];
+      	  temp[yy][Dx+1] = myimg[idx(y,x+Dx)];
+      	}
+      // Top & bottom pixels
+      if(threadIdx.y == 0)
+      	{
+	  temp[0][xx] = myimg[idx(y-1,x)];
+      	  temp[Dy+1][xx] = myimg[idx(y+Dy,x)];
+      	}
+      // Corner pixels
+      if(threadIdx.x == 0 && threadIdx.y == 0)
+      	{
+      	  temp[0][0] = myimg[idx(y-1,x-1)];
+      	  temp[0][Dx+1] = myimg[idx(y-1,x+Dx)];
+      	  temp[Dy+1][0] = myimg[idx(y+Dy,x-1)];
+      	  temp[Dy+1][Dx+1] = myimg[idx(y+Dy,x+Dx)];
+      	}
+    }
+
+  __syncthreads();
+
+  // Compute stencil for the block
   if (x > 0 && x < cols-1 && y > 0 && y < rows-1)
     {
-      oimg[idx(y,x)].z = 
-	(myimg[idx(y,x)].z
-	 + myimg[idx(y,x-1)].z 
-	 + myimg[idx(y,x+1)].z 
-	 + myimg[idx(y-1,x)].z
-	 + myimg[idx(y-1,x-1)].z 
-	 + myimg[idx(y-1,x+1)].z 
-	 + myimg[idx(y+1,x)].z
-	 + myimg[idx(y+1,x-1)].z 
-	 + myimg[idx(y+1,x+1)].z)/9;
+      Pixel result;
+      result.x = 0;
+      result.y = 0;
+      result.z = 0;
 
-      oimg[idx(y,x)].y = 
-	(myimg[idx(y,x)].y 
-	 + myimg[idx(y,x-1)].y 
-	 + myimg[idx(y,x+1)].y 
-	 + myimg[idx(y-1,x)].y 
-	 + myimg[idx(y-1,x-1)].y 
-	 + myimg[idx(y-1,x+1)].y 
-	 + myimg[idx(y+1,x)].y 
-	 + myimg[idx(y+1,x-1)].y 
-	 + myimg[idx(y+1,x+1)].y)/9;
+      for(int dy = -1; dy <=1; dy++)
+	{
+	  for(int dx = -1; dx <=1; dx++)
+	    {
+	      result.x += temp[yy+dy][xx+dx].x;
+	      result.y += temp[yy+dy][xx+dx].y;
+	      result.z += temp[yy+dy][xx+dx].z;
+	    }
+	}
 
-      oimg[idx(y,x)].x = 
-	(myimg[idx(y,x)].x 
-	 + myimg[idx(y,x-1)].x 
-	 + myimg[idx(y,x+1)].x 
-	 + myimg[idx(y-1,x)].x 
-	 + myimg[idx(y-1,x-1)].x 
-	 + myimg[idx(y-1,x+1)].x 
-	 + myimg[idx(y+1,x)].x 
-	 + myimg[idx(y+1,x-1)].x 
-	 + myimg[idx(y+1,x+1)].x)/9;
+      oimg[idx(y,x)].x = result.x/9;
+      oimg[idx(y,x)].y = result.y/9;
+      oimg[idx(y,x)].z = result.z/9;
     }
 }
 
@@ -67,13 +93,13 @@ double  apply_stencil(const int rows, const int cols, Pixel * const in, Pixel * 
   cudaMalloc(&d_out, rows*cols*sizeof(Pixel));
   cudaMemcpy(d_in, in, rows*cols*sizeof(Pixel), cudaMemcpyHostToDevice);
 
-  const int tile_size = 32;
   const dim3 blockSize(tile_size,tile_size,1);
   const dim3 gridSize((cols+tile_size-1)/tile_size,(rows+tile_size-1)/tile_size,1);
 
   double tstart, tend;
   tstart = omp_get_wtime();
   filter<<<gridSize, blockSize>>>(d_in, d_out, rows, cols);
+  cudaDeviceSynchronize();
   tend = omp_get_wtime();
 
   cudaMemcpy(out, d_out, rows*cols*sizeof(Pixel), cudaMemcpyDeviceToHost);
