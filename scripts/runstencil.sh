@@ -3,7 +3,7 @@
 remoteHost=gitlab.oit.duke.edu
 remoteUser=git
 # replace the following line with your group number
-Groups=20
+Groups=4
 remoteRepos=parprog.git
 localCodeDir=tmprepo
 
@@ -31,13 +31,13 @@ do
 		pushd $PWD/$localRepoDir/labs/stencil
 		make
 		echo -e "Run Serial Code"
-		(ulimit -t 300; $PWD/stencil_serial)
+		(ulimit -t 300; $PWD/stencil_serial $1)
 		echo -e "Run openmp Code"
-		(ulimit -t 5000; $PWD/stencil_openmp)
+		(ulimit -t 5000; $PWD/stencil_openmp $1)
 		echo -e "Run MIC Offload Code"
-		(ulimit -t 300; $PWD/stencil_offload)
+		(ulimit -t 300; $PWD/stencil_offload $1)
 		echo -e "Run CUDA  Code"
-		(ulimit -t 300; $PWD/stencil_cuda)
+		(ulimit -t 300; $PWD/stencil_cuda $1)
 		popd
     fi
   done
