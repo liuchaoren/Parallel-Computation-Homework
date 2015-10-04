@@ -141,6 +141,7 @@ double  apply_stencil(const int rows, const int cols, Pixel * const in_d, Pixel 
 	double tstart, tend;
     tstart = omp_get_wtime();
 	filter<<<numBlocks, threadsPerBlock>>>(rows, cols, in_d, out_d);
+	cudaDeviceSynchronize();
     tend = omp_get_wtime();
     cudaMemcpy(out, out_d, img_size, cudaMemcpyDeviceToHost);
 	return(tend-tstart);
@@ -186,6 +187,7 @@ int main(int argc, char **argv)
     exit(-1);
   }
   memset(oimg,0,img_size);
+  cudaMemset(oimg_d, 0, img_size);
   printf("Convert image\n");
   // convert to floats for processing and data reorganization 
   int rows = infoHdr.height;
