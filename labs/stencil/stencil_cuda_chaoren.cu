@@ -29,100 +29,114 @@ __device__ int indexFinder(int y, int x, int rowLen) {
 
 __global__ void filter(int rows, int cols, Pixel *myimg, Pixel *oimg) 
 {
-  unsigned int tempThreadsx = threadsPerBlock.x + 2;
-  unsigned int tempThreadsy = threadsPerBlock.y + 2;
+  unsigned int tempThreadsx = blockDim.x + 2;
+  unsigned int tempThreadsy = blockDim.y + 2;
 
-  __shared__ Piexel* temp = cudamalloc(tempThreadsx * tempThreadsy *sizeof(Pixel));
+  __shared__ Pixel temp[18*18];
+  // __shared__ Pixel * temp;
+  // temp = cudaMalloc(tempThreadsx * tempThreadsy *sizeof(Pixel));
+  // temp = cudaMalloc(tempThreadsx * tempThreadsy *sizeof(Pixel));
 
-  int globalx = blockIdx.x * threadsPerBlock.x + threadIdx.x;
-  int globaly = blockIdx.y * threadsPerBlock.y + threadIdx.y;
+  int globalx = blockIdx.x * blockDim.x + threadIdx.x;
+  int globaly = blockIdx.y * blockDim.y + threadIdx.y;
   if (globalx < cols && globaly < rows) {
-    usigned int gindex = indexFinder(globaly, globalx,  cols);
-    usigned int tempx = threadIdx.x + 1;
-    usigned int tempy = threadIdx.y + 1;
-    usigned int bindex = indexFinder(tempy, tempx, tempThreadsx);
+    unsigned int gindex = indexFinder(globaly, globalx,  cols);
+    unsigned int tempx = threadIdx.x + 1;
+    unsigned int tempy = threadIdx.y + 1;
+    unsigned int bindex = indexFinder(tempy, tempx, tempThreadsx);
     temp[bindex] = myimg[gindex];   // load itself
     if (threadIdx.x == 0 && globalx != 0) {
       int leftbindex = bindex - 1;
       int leftgindex = gindex - 1;
       temp[leftbindex]  = myimg[leftgindex];
     }
-    if (threadIdx.x == threadsPerBlock.x - 1 && globalx != cols - 1) {
+    if (threadIdx.x == blockDim.x - 1 && globalx != cols - 1) {
  		int rightbindex = bindex + 1;
  		int rightgindex = gindex + 1;
- 		temp[rightbindex] = myimg[rightgindex]
+ 		temp[rightbindex] = myimg[rightgindex];
     }
     if(threadIdx.y == 0 && globaly != 0) {
     	int abovebindex = bindex - tempThreadsx;
     	int abovegindex = gindex - cols;
     	temp[abovebindex] = myimg[abovegindex];
     }
-    if(threadIdx.y == threadsPerBlock.y - 1 && globaly ! = rows - 1) {
+
+    if(threadIdx.y == blockDim.y - 1 && globaly  != rows - 1) {
     	int underbindex = bindex + tempThreadsx;
     	int undergindex = gindex + cols;
     	temp[underbindex] = myimg[undergindex];
     }
-    int cornerbindex, cornergindey;
-    if (threadIdx.x == 0 and threadIdx.y == 0) { 
+
+    int cornerbindex, cornergindex;
+    if (threadIdx.x == 0 && threadIdx.y == 0) { 
     	cornerbindex = bindex - tempThreadsx - 1;
-    	cornergindey = gindex - cols - 1;
+    	cornergindex = gindex - cols - 1;
     	temp[cornerbindex] = myimg[cornergindex];
     }
-     if (threadIdx.x == 0 and threadIdx.y == threadsPerBlock.y - 1) { 
+     if (threadIdx.x == 0 && threadIdx.y == blockDim.y - 1) { 
     	cornerbindex = bindex + tempThreadsx - 1;
-    	cornergindey = gindex + cols - 1;
+    	cornergindex = gindex + cols - 1;
     	temp[cornerbindex] = myimg[cornergindex];
     }
-    if (threadIdx.x == threadsPerBlock.x - 1 and threadIdx.y == 0) { 
+    if (threadIdx.x == blockDim.x - 1 && threadIdx.y == 0) { 
     	cornerbindex = bindex - tempThreadsx + 1;
-    	cornergindey = gindex - cols + 1;
+    	cornergindex = gindex - cols + 1;
     	temp[cornerbindex] = myimg[cornergindex];
     }
-    if (threadIdx.x == threadsPerBlock.x - 1 and threadIdx.y == threadsPerBlock.y - 1) { 
+    if (threadIdx.x == blockDim.x - 1 && threadIdx.y == blockDim.y - 1) { 
     	cornerbindex = bindex + tempThreadsx + 1;
-    	cornergindey = gindex + cols + 1;
+    	cornergindex = gindex + cols + 1;
     	temp[cornerbindex] = myimg[cornergindex];
     }
 
     __syncthreads();
-    if (globalx > 0 && globalx < cols - 1 && globaly > 0 and globaly < rows - 1) {
-    	oimg[gindex].z = (temp[indexFinder(tempy, tempx, threadsPerBlock.x)].z 
-    					+ temp[indexFinder(tempy, tempx-1, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy, tempx+1, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy-1, tempx, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy-1, tempx-1, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy-1, tempx+1, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy+1, tempx, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy+1, tempx-1, threadsPerBlock.x)].z
-    					+ temp[indexFinder(tempy+1, tempx+1, threadsPerBlock.x)].z) / 9;
+    if (globalx > 0 && globalx < cols - 1 && globaly > 0 && globaly < rows - 1) {
+    	oimg[gindex].z = (temp[indexFinder(tempy, tempx, tempThreadsx)].z 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].z) / 9;
 
-    	oimg[gindex].y = (temp[indexFinder(tempy, tempx, threadsPerBlock.x)].y 
-    					+ temp[indexFinder(tempy, tempx-1, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy, tempx+1, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy-1, tempx, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy-1, tempx-1, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy-1, tempx+1, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy+1, tempx, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy+1, tempx-1, threadsPerBlock.x)].y
-    					+ temp[indexFinder(tempy+1, tempx+1, threadsPerBlock.x)].y) / 9;
+    	oimg[gindex].y = (temp[indexFinder(tempy, tempx, tempThreadsx)].y 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].y) / 9;
 
-    	oimg[gindex].x = (temp[indexFinder(tempy, tempx, threadsPerBlock.x)].x 
-    					+ temp[indexFinder(tempy, tempx-1, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy, tempx+1, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy-1, tempx, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy-1, tempx-1, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy-1, tempx+1, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy+1, tempx, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy+1, tempx-1, threadsPerBlock.x)].x
-    					+ temp[indexFinder(tempy+1, tempx+1, threadsPerBlock.x)].x) / 9;
+    	oimg[gindex].x = (temp[indexFinder(tempy, tempx, tempThreadsx)].x 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].x) / 9;
     }
   }
 }
 
-double  apply_stencil(const int rows, const int cols, Pixel * const in_d, Pixel * const out_d, Piexl * const out, uint64_t img_size) {
+double  apply_stencil(const int rows, const int cols, Pixel * const in_d, Pixel * const out_d, Pixel * const out, uint64_t img_size) {
 	dim3 threadsPerBlock(16, 16);
-	blockx = cols % threadsPerBlock.x = 0 ? cols/threadsPerBlock.x : cols/threadsPerBlock.x + 1
-	blocky = rows % threadsPerBlock.y = 0 ? rows/threadsPerBlock.y : rows/threadsPerBlock.y + 1
+	int blockx, blocky;
+	if (cols % 16 == 0)
+		blockx = cols/16;
+	else
+		blockx = cols/16 + 1;
+	if (rows % 16 == 0)
+		blocky = rows/16;
+	else
+		blocky = rows/16 + 1;
+	// int blockx = cols % 16 = 0 ? cols/16 : cols/16 + 1;
+	// int blocky = rows % 16 = 0 ? rows/16 : rows/16 + 1;
 	dim3 numBlocks(blockx, blocky);
 	double tstart, tend;
     tstart = omp_get_wtime();
@@ -144,7 +158,7 @@ int main(int argc, char **argv)
   uint64_t x,y;
 //  uint64_t new_x, new_y, new_z;
   uint64_t img_size;
-  double start, end;
+  // double start, end;
 //  int strip_width;
 
   if(argc != 2) {
