@@ -13,97 +13,138 @@ extern "C" void LoadBMPFile(uchar3 **img, BMPHeader *hdr, BMPInfoHeader *infoHdr
 extern "C" void WriteBMPFile(uchar3 **img, BMPHeader hdr, BMPInfoHeader infoHdr, const char *name);
 
 #define idx(A,B) ((A) * cols + (B))
+//#define new_idx(A, B, C) (A * strip_width * rows + B * strip_width + C)
+//#define new_idx_last(A, B, C) (A * strip_width * rows + B * strip_width_last + C)
+
+#define sqrtthrds 16
 
 typedef struct pixel {
   float x, y, z;
 } Pixel;
 
-const int tile_size = 32;
-
-__global__
-void filter(Pixel *myimg, Pixel *oimg, int rows, int cols)
-{
-  __shared__ Pixel temp[tile_size+2][tile_size+2];
-
-  int x = threadIdx.x + blockDim.x*blockIdx.x;
-  int y = threadIdx.y + blockDim.y*blockIdx.y;
-
-  int xx = threadIdx.x+1;
-  int yy = threadIdx.y+1;
-
-  int Dx = x+blockDim.x < cols ? blockDim.x : cols-x-1;
-  int Dy = y+blockDim.y < rows ? blockDim.y : rows-y-1;
-      	 
-  // Copy pixels to shared memory
-  if (x < cols && y < rows)
-    {
-      // Interior pixels
-      temp[yy][xx] = myimg[idx(y,x)];
-      // Left & right side pixels
-      if(threadIdx.x == 0)
-      	{
-	  temp[yy][0] = myimg[idx(y,x-1)];
-      	  temp[yy][Dx+1] = myimg[idx(y,x+Dx)];
-      	}
-      // Top & bottom pixels
-      if(threadIdx.y == 0)
-      	{
-	  temp[0][xx] = myimg[idx(y-1,x)];
-      	  temp[Dy+1][xx] = myimg[idx(y+Dy,x)];
-      	}
-      // Corner pixels
-      if(threadIdx.x == 0 && threadIdx.y == 0)
-      	{
-      	  temp[0][0] = myimg[idx(y-1,x-1)];
-      	  temp[0][Dx+1] = myimg[idx(y-1,x+Dx)];
-      	  temp[Dy+1][0] = myimg[idx(y+Dy,x-1)];
-      	  temp[Dy+1][Dx+1] = myimg[idx(y+Dy,x+Dx)];
-      	}
-    }
-
-  __syncthreads();
-
-  // Compute stencil for the block
-  if (x > 0 && x < cols-1 && y > 0 && y < rows-1)
-    {
-      Pixel result;
-      result.x = 0;
-      result.y = 0;
-      result.z = 0;
-
-      for(int dy = -1; dy <=1; dy++)
-	{
-	  for(int dx = -1; dx <=1; dx++)
-	    {
-	      result.x += temp[yy+dy][xx+dx].x;
-	      result.y += temp[yy+dy][xx+dx].y;
-	      result.z += temp[yy+dy][xx+dx].z;
-	    }
-	}
-
-      oimg[idx(y,x)].x = result.x/9;
-      oimg[idx(y,x)].y = result.y/9;
-      oimg[idx(y,x)].z = result.z/9;
-    }
+__device__ int indexFinder(int y, int x, int rowLen) {
+  return y * rowLen + x;
 }
 
-double  apply_stencil(const int rows, const int cols, Pixel * const in, Pixel * const out) {
-  Pixel *d_in, *d_out;
-  cudaMalloc(&d_in, rows*cols*sizeof(Pixel));
-  cudaMalloc(&d_out, rows*cols*sizeof(Pixel));
-  cudaMemcpy(d_in, in, rows*cols*sizeof(Pixel), cudaMemcpyHostToDevice);
 
-  const dim3 blockSize(tile_size,tile_size,1);
-  const dim3 gridSize((cols+tile_size-1)/tile_size,(rows+tile_size-1)/tile_size,1);
+__global__ void filter(int rows, int cols, Pixel *myimg, Pixel *oimg) 
+{
+  unsigned int tempThreadsx = blockDim.x + 2;
+  unsigned int tempThreadsy = blockDim.y + 2;
 
-  double tstart, tend;
-  tstart = omp_get_wtime();
-  filter<<<gridSize, blockSize>>>(d_in, d_out, rows, cols);
-  cudaDeviceSynchronize();
-  tend = omp_get_wtime();
+  __shared__ Pixel temp[(sqrtthrds+2)*(sqrtthrds+2)];
+  // __shared__ Pixel * temp;
+  // temp = cudaMalloc(tempThreadsx * tempThreadsy *sizeof(Pixel));
+  // temp = cudaMalloc(tempThreadsx * tempThreadsy *sizeof(Pixel));
 
-  cudaMemcpy(out, d_out, rows*cols*sizeof(Pixel), cudaMemcpyDeviceToHost);
-  return(tend-tstart);
+  int globalx = blockIdx.x * blockDim.x + threadIdx.x;
+  int globaly = blockIdx.y * blockDim.y + threadIdx.y;
+  if (globalx < cols && globaly < rows) {
+    unsigned int gindex = indexFinder(globaly, globalx,  cols);
+    unsigned int tempx = threadIdx.x + 1;
+    unsigned int tempy = threadIdx.y + 1;
+    unsigned int bindex = indexFinder(tempy, tempx, tempThreadsx);
+    temp[bindex] = myimg[gindex];   // load itself
+    if (threadIdx.x == 0 && globalx != 0) {
+      int leftbindex = bindex - 1;
+      int leftgindex = gindex - 1;
+      temp[leftbindex]  = myimg[leftgindex];
+    }
+    if (threadIdx.x == blockDim.x - 1 && globalx != cols - 1) {
+ 		int rightbindex = bindex + 1;
+ 		int rightgindex = gindex + 1;
+ 		temp[rightbindex] = myimg[rightgindex];
+    }
+    if(threadIdx.y == 0 && globaly != 0) {
+    	int abovebindex = bindex - tempThreadsx;
+    	int abovegindex = gindex - cols;
+    	temp[abovebindex] = myimg[abovegindex];
+    }
+
+    if(threadIdx.y == blockDim.y - 1 && globaly  != rows - 1) {
+    	int underbindex = bindex + tempThreadsx;
+    	int undergindex = gindex + cols;
+    	temp[underbindex] = myimg[undergindex];
+    }
+
+    int cornerbindex, cornergindex;
+    if (threadIdx.x == 0 && threadIdx.y == 0) { 
+    	cornerbindex = bindex - tempThreadsx - 1;
+    	cornergindex = gindex - cols - 1;
+    	temp[cornerbindex] = myimg[cornergindex];
+    }
+     if (threadIdx.x == 0 && threadIdx.y == blockDim.y - 1) { 
+    	cornerbindex = bindex + tempThreadsx - 1;
+    	cornergindex = gindex + cols - 1;
+    	temp[cornerbindex] = myimg[cornergindex];
+    }
+    if (threadIdx.x == blockDim.x - 1 && threadIdx.y == 0) { 
+    	cornerbindex = bindex - tempThreadsx + 1;
+    	cornergindex = gindex - cols + 1;
+    	temp[cornerbindex] = myimg[cornergindex];
+    }
+    if (threadIdx.x == blockDim.x - 1 && threadIdx.y == blockDim.y - 1) { 
+    	cornerbindex = bindex + tempThreadsx + 1;
+    	cornergindex = gindex + cols + 1;
+    	temp[cornerbindex] = myimg[cornergindex];
+    }
+
+    __syncthreads();
+    if (globalx > 0 && globalx < cols - 1 && globaly > 0 && globaly < rows - 1) {
+    	oimg[gindex].z = (temp[indexFinder(tempy, tempx, tempThreadsx)].z 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].z
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].z) / 9;
+
+    	oimg[gindex].y = (temp[indexFinder(tempy, tempx, tempThreadsx)].y 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].y
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].y) / 9;
+
+    	oimg[gindex].x = (temp[indexFinder(tempy, tempx, tempThreadsx)].x 
+    					+ temp[indexFinder(tempy, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy, tempx+1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy-1, tempx+1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx-1, tempThreadsx)].x
+    					+ temp[indexFinder(tempy+1, tempx+1, tempThreadsx)].x) / 9;
+    }
+  }
+}
+
+double  apply_stencil(const int rows, const int cols, Pixel * const in_d, Pixel * const out_d, Pixel * const out, uint64_t img_size) {
+	dim3 threadsPerBlock(sqrtthrds, sqrtthrds);
+	int blockx, blocky;
+	if (cols % sqrtthrds == 0)
+		blockx = cols/sqrtthrds;
+	else
+		blockx = cols/sqrtthrds + 1;
+	if (rows % sqrtthrds == 0)
+		blocky = rows/sqrtthrds;
+	else
+		blocky = rows/sqrtthrds + 1;
+	// int blockx = cols % 16 = 0 ? cols/16 : cols/16 + 1;
+	// int blocky = rows % 16 = 0 ? rows/16 : rows/16 + 1;
+	dim3 numBlocks(blockx, blocky);
+	double tstart, tend;
+    tstart = omp_get_wtime();
+	filter<<<numBlocks, threadsPerBlock>>>(rows, cols, in_d, out_d);
+	cudaDeviceSynchronize();
+    tend = omp_get_wtime();
+    cudaMemcpy(out, out_d, img_size, cudaMemcpyDeviceToHost);
+	return(tend-tstart);
 }
 
 // main read, call filter, write new image
@@ -114,9 +155,13 @@ int main(int argc, char **argv)
   BMPInfoHeader infoHdr;
   uchar3 *bimg;
   Pixel *img,*oimg;
+  Pixel *img_d, *oimg_d;
   uint64_t x,y;
+//  uint64_t new_x, new_y, new_z;
   uint64_t img_size;
-  //double start, end;
+  // double start, end;
+//  int strip_width;
+
   if(argc != 2) {
     printf("Usage: %s imageName\n", argv[0]);
     return 1;
@@ -129,31 +174,52 @@ int main(int argc, char **argv)
 
   img_size = infoHdr.width * infoHdr.height * sizeof(Pixel);
   img = (Pixel *) malloc(img_size);
+  cudaMalloc((void **) &img_d, img_size);
   if (img == NULL) {
     printf("Error Cant alloc image space\n");
     exit(-1);
   }
   memset(img,0,img_size);
   oimg = (Pixel *) malloc(img_size);
+  cudaMalloc((void **) &oimg_d, img_size);
   if (oimg == NULL) {
     printf("Error Cant alloc output image space\n");
     exit(-1);
   }
   memset(oimg,0,img_size);
+  cudaMemset(oimg_d, 0, img_size);
   printf("Convert image\n");
-  // convert to floats for processing
+  // convert to floats for processing and data reorganization 
   int rows = infoHdr.height;
   int cols = infoHdr.width;
+//  if (cols % strip_width != 0) { // the width of last strip is smaller than strip_width
+//	int strip_num = cols / strip_width + 1
+//	int strip_width_last = cols - (strip_num - 1) * strip_width
+//  } else {
+//	int strip_num = cols / strip_width
+//	int strip_width_last = strip_width
+//  }
+	
   for (y=0; y<rows; y++)
     for (x=0; x<cols; x++)
     {
+//	 new_z = x/step_width;
+//	 new_y = y;
+//	 new_x = x % step_width;
+//	 img[idx(y,x)].x = bimg[idx(y,x)].x/255.0;   
+//	 img[idx(y,x)].y = bimg[idx(y,x)].y/255.0;   
+//	 img[idx(y,x)].z = bimg[idx(y,x)].z/255.0;   
 	 img[idx(y,x)].x = bimg[idx(y,x)].x/255.0;   
 	 img[idx(y,x)].y = bimg[idx(y,x)].y/255.0;   
 	 img[idx(y,x)].z = bimg[idx(y,x)].z/255.0;   
     }   
 
+// copy to cuda memory
+  cudaMemcpy(img_d, img, img_size, cudaMemcpyHostToDevice);
+  // cudaMemcpy(oimg_d, oimg, img_size, cudaMemcpyHostToDevice);
+    
     double runtime;
-    runtime = apply_stencil(infoHdr.height, infoHdr.width, img, oimg);
+    runtime = apply_stencil(infoHdr.height, infoHdr.width, img_d, oimg_d, oimg, img_size);
     printf("time for stencil = %f seconds\n",runtime);
 
   // clear bitmap array
@@ -175,5 +241,7 @@ printf("rows %d cols %d\n",rows, cols);
 
   // write the output file
   WriteBMPFile(&bimg, hdr,infoHdr, "./img-new.bmp");
+  free(img); free(oimg); free(bimg); 
+  cudaFree(img_d); cudaFree(oimg_d);
   
 }
