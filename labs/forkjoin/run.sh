@@ -11,7 +11,8 @@
 #    0, 100
 #    0, -100
 
-./starhole_serial 10000 100 200 100 0 -100 0 0 100 0 -100
+make starhole_$1
+./starhole_$1 10000 100 200 100 0 -100 0 0 100 0 -100
 
 # Execution time of the serial version is roughly 26 seconds on a nuc
 #Attempting to setup initial state...
