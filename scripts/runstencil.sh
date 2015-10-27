@@ -3,7 +3,7 @@
 remoteHost=gitlab.oit.duke.edu
 remoteUser=git
 # replace the following line with your group number
-Groups=20
+Groups=4
 remoteRepos=parprog.git
 localCodeDir=tmprepo
 

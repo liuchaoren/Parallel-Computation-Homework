@@ -1,4 +1,4 @@
-all: stencil_serial stencil_cuda stencil_openmp stencil_offload stencil_cuda
+all: stencil_serial stencil_openmp stencil_offload stencil_cuda
 
 OPT = -O2
 
@@ -18,4 +18,4 @@ bmploader.o: bmploader.c
 	icpc $(OPT) -c bmploader.c
 
 clean:
-	rm *.o stencil_serial stencil_cuda stencil_openmp stencil_offload 
+	rm -f *.o stencil_serial stencil_cuda stencil_openmp stencil_offload img-new.bmp
