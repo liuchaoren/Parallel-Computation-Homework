@@ -28,16 +28,16 @@ do
 		cloneCmdRun=$($cloneCmd)
 		echo -e "Running: \n$ $cloneCmd"
 		echo -e "${cloneCmdRun}"
-		pushd $PWD/$localRepoDir/labs/stencil
+		pushd $PWD/$localRepoDir/labs/forkjoin
 		make
 		echo -e "Run Serial Code"
-		(ulimit -t 300; $PWD/stencil_serial $1)
+		(ulimit -t 300; $PWD/starhole_serial 10000 100 200 100 0 -100 0 0 100 0 -100)
 		echo -e "Run openmp Code"
-		(ulimit -t 5000; $PWD/stencil_openmp $1)
-		echo -e "Run MIC Offload Code"
-		(ulimit -t 300; $PWD/stencil_offload $1)
-		echo -e "Run CUDA  Code"
-		(ulimit -t 300; $PWD/stencil_cuda $1)
+		(ulimit -t 300; $PWD/starhole_openmp 10000 100 200 100 0 -100 0 0 100 0 -100)
+		echo -e "Run Cilk Code"
+		(ulimit -t 300; $PWD/starhole_cilk 10000 100 200 100 0 -100 0 0 100 0 -100)
+		echo -e "Run TBB Code"
+		(ulimit -t 300; $PWD/starhole_tbb 10000 100 200 100 0 -100 0 0 100 0 -100)
 		popd
     fi
   done

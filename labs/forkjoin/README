@@ -20,14 +20,24 @@ Care has been taken in the code so that the random number generation is determin
 
 1. Check out the repository
 
-git pull <teacher repo remote> master
+git pull origin
 
-2. Run the Makefile and look at the source code and output of the serial program.
+2. Run the Makefile and look at the source code and output of the program.
+I've provided all the entries in the Makefile, so don't worry when make fails
+to compile the programs you have not yet written.  
 
-3. Write a parallel versions of the program in Cilk, TBB, and OpenMP.
+3. Use run.sh script to run the starhole_serial program.  There are several command line arguments, I'm not list them all here. The program produces a file out.jpg that you can examine if you wish.
 
-4. Update the Makefile entries for the other three build targets with compilation commands for source files.
+4. Write a your new versions of the program.  Follow the convention of 
+starhole_openmp, starhole_cilk, starhole_tbb
+for source and executable files. I will rely on this for my own 
+grading purposes. 
 
-5. Optimize performance
+6. Get timing results for all implementations.  This should include the 
+serial program, and your parallel versions.  Plot speedup for one of your three parallel.
 
-6. Commit the source files and updated Makefile to your repository.
+7. Include your results in a PDF file called results.pdf. This file should
+describe what steps you took to parallelize the serial code.
+Also include a description of the contributions from each group member in the PDF.
+
+8. Commit and push the source files, updated Makefile, and results.pdf to your group repository.  Please do not add the executable files to the repository.

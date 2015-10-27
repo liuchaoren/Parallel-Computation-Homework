@@ -15,7 +15,7 @@ stencil_cuda: stencil_cuda.cu bmploader.o
 	nvcc $(OPT) -o stencil_cuda stencil_cuda.cu bmploader.o -Xcompiler -fopenmp
 
 bmploader.o: bmploader.c
-	g++ $(OPT) -c bmploader.c
+	icpc $(OPT) -c bmploader.c
 
 clean:
 	rm *.o stencil_serial stencil_cuda stencil_openmp stencil_offload 
