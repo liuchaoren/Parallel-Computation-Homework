@@ -9,6 +9,7 @@
 #include <tbb/tick_count.h>
 #include <tbb/tbb.h>
 #include <tbb/task_group.h>
+#include <tbb/task_scheduler_init.h>
 
 using namespace cv;
 using namespace tbb;
@@ -28,6 +29,7 @@ static int* outArea;
 static int radius;
 static int sim_steps;
 
+const int NUM_WORKERS = 32;
 // Returns the total number of particles descending from this call
 // and increments the count at the right location
 int walker(long int seed, int x, int y, int stepsremaining) {
@@ -102,7 +104,7 @@ int main(int argc, char** argv) {
     // Initialize simulation lookups
     initialize(radius,&outArea,&splitProb,&area);
     
-    
+    task_scheduler_init init(NUM_WORKERS);
     // Start initial walks
     printf("Starting the walks...\n");
     int totParticles = 0;
