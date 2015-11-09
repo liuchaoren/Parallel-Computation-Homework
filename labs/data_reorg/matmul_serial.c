@@ -29,103 +29,103 @@ double C[N][M];
 
 // Initialize the matrices (uniform values to make an easier check)
 void matrix_init(void) {
-	int i, j;
+  int i, j;
 
-	// A[N][P] -- Matrix A
-	for (i=0; i<N; i++) {
-		for (j=0; j<P; j++) {
-			A[i][j] = AVAL;
-		}
-	}
+  // A[N][P] -- Matrix A
+  for (i=0; i<N; i++) {
+    for (j=0; j<P; j++) {
+      A[i][j] = AVAL;
+    }
+  }
 
-	// B[P][M] -- Matrix B
-	for (i=0; i<P; i++) {
-		for (j=0; j<M; j++) {
-			B[i][j] = BVAL;
-		}
-	}
+  // B[P][M] -- Matrix B
+  for (i=0; i<P; i++) {
+    for (j=0; j<M; j++) {
+      B[i][j] = BVAL;
+    }
+  }
 
-	// C[N][M] -- result matrix for AB
-	for (i=0; i<N; i++) {
-		for (j=0; j<M; j++) {
-			C[i][j] = 0.0;
-		}
-	}
+  // C[N][M] -- result matrix for AB
+  for (i=0; i<N; i++) {
+    for (j=0; j<M; j++) {
+      C[i][j] = 0.0;
+    }
+  }
 }
 
 // The actual mulitplication function, totally naive
 double matrix_multiply(void) {
-	int i, j, k;
-	double start, end;
+  int i, j, k;
+  double start, end;
 
-	// timer for the start of the computation
-	// If you do any dynamic reorganization, 
-	// do it before you start the timer
-	// the timer value is captured.
-	start = omp_get_wtime(); 
+  // timer for the start of the computation
+  // If you do any dynamic reorganization, 
+  // do it before you start the timer
+  // the timer value is captured.
+  start = omp_get_wtime(); 
 
-	for (i=0; i<N; i++){
-		for (j=0; j<M; j++){
-			for(k=0; k<P; k++){
-				C[i][j] += A[i][k] * B[k][j];
-			}
-		}
-	}
+  for (i=0; i<N; i++){
+    for (j=0; j<M; j++){
+      for(k=0; k<P; k++){
+	C[i][j] += A[i][k] * B[k][j];
+      }
+    }
+  }
 
-	// timer for the end of the computation
-	end = omp_get_wtime();
-	// return the amount of high resolution time spent
-	return end - start;
+  // timer for the end of the computation
+  end = omp_get_wtime();
+  // return the amount of high resolution time spent
+  return end - start;
 }
 
 // Function to check the result, relies on all values in each initial
 // matrix being the same
 int check_result(void) {
-	int i, j;
+  int i, j;
 
-	double e  = 0.0;
-	double ee = 0.0;
-	double v  = AVAL * BVAL * ORDER;
+  double e  = 0.0;
+  double ee = 0.0;
+  double v  = AVAL * BVAL * ORDER;
 
-	for (i=0; i<N; i++) {
-		for (j=0; j<M; j++) {
-			e = C[i][j] - v;
-			ee += e * e;
-		}
-	}
+  for (i=0; i<N; i++) {
+    for (j=0; j<M; j++) {
+      e = C[i][j] - v;
+      ee += e * e;
+    }
+  }
 
-	if (ee > TOL) {
-		return 0;
-	} else {
-		return 1;
-	}
+  if (ee > TOL) {
+    return 0;
+  } else {
+    return 1;
+  }
 }
 
 // main function
 int main(int argc, char **argv) {
-	int correct;
-	double run_time;
-	double mflops;
+  int correct;
+  double run_time;
+  double mflops;
 
-	// initialize the matrices
-	matrix_init();
-	// multiply and capture the runtime
-	run_time = matrix_multiply();
-	// verify that the result is sensible
-	correct  = check_result();
+  // initialize the matrices
+  matrix_init();
+  // multiply and capture the runtime
+  run_time = matrix_multiply();
+  // verify that the result is sensible
+  correct  = check_result();
 
-	// Compute the number of mega flops
-	mflops = (2.0 * N * P * M) / (1000000.0 * run_time);
-	printf("Order %d multiplication in %f seconds \n", ORDER, run_time);
-	printf("Order %d multiplication at %f mflops\n", ORDER, mflops);
+  // Compute the number of mega flops
+  mflops = (2.0 * N * P * M) / (1000000.0 * run_time);
+  printf("Order %d multiplication in %f seconds \n", ORDER, run_time);
+  printf("Order %d multiplication at %f mflops\n", ORDER, mflops);
 
-	// Display check results
-	if (correct) {
-		printf("\n Hey, it worked");
-	} else {
-		printf("\n Errors in multiplication");
-	}
-	printf("\n all done \n");
+  // Display check results
+  if (correct) {
+    printf("\n Hey, it worked");
+  } else {
+    printf("\n Errors in multiplication");
+  }
+  printf("\n all done \n");
 
-	return 0;
+  return 0;
 }
