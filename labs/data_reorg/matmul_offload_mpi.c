@@ -24,9 +24,11 @@
 #define P ORDER
 #define M ORDER
 
-double A[N][P];
-double B[P][M];
-double C[N][M];
+#pragma offload_attribute(push,target(mic))
+double A[N][P] __attribute__((aligned(64)));
+double B[P][M] __attribute__((aligned(64)));
+double C[N][M] __attribute__((aligned(64)));
+#pragma offload_attribute(pop)
 
 // Initialize the matrices (uniform values to make an easier check)
 void matrix_init(void) {
@@ -58,12 +60,17 @@ void matrix_init(void) {
 double matrix_multiply(int fromRowIdx, int toRowIdx) {
   double start, end;
 
+
+#pragma offload target(mic) in(A,B,C)
+  {}
   // timer for the start of the computation
   // If you do any dynamic reorganization, 
   // do it before you start the timer
   // the timer value is captured.
   start = omp_get_wtime(); 
 
+#pragma offload target(mic)
+#pragma omp parallel for
   for (int i=fromRowIdx; i<toRowIdx; i++){
     for(int k=0; k<P; k++){
       for (int j=0; j<M; j++){
@@ -74,6 +81,9 @@ double matrix_multiply(int fromRowIdx, int toRowIdx) {
 
   // timer for the end of the computation
   end = omp_get_wtime();
+
+#pragma offload target(mic) out(C)
+  {}
   // return the amount of high resolution time spent
   return end - start;
 }
