@@ -64,6 +64,7 @@ double matrix_multiply(int fromRowIdx, int toRowIdx) {
   // the timer value is captured.
   start = omp_get_wtime(); 
 
+#pragma omp parallel for
   for (int i=fromRowIdx; i<toRowIdx; i++){
     for(int k=0; k<P; k++){
       for (int j=0; j<M; j++){
