@@ -57,33 +57,47 @@ void matrix_init(void) {
 }
 
 // The actual mulitplication function, totally naive
-double matrix_multiply(int fromRowIdx, int toRowIdx) {
+double matrix_multiply(int fromRowIdx, int toRowIdx, int rank) {
   double start, end;
+  bool done = false;
+  int range = (toRowIdx-fromRowIdx)/2;
 
-
-#pragma offload target(mic) in(A,B,C)
-  {}
   // timer for the start of the computation
   // If you do any dynamic reorganization, 
   // do it before you start the timer
   // the timer value is captured.
   start = omp_get_wtime(); 
 
-#pragma offload target(mic)
+  // Use offload to compute half of the data
+  #pragma offload target(mic:rank) in(A[fromRowIdx:range][:],B) inout(C[fromRowIdx:range][:])  signal(done)
+  {
 #pragma omp parallel for
-  for (int i=fromRowIdx; i<toRowIdx; i++){
-    for(int k=0; k<P; k++){
-      for (int j=0; j<M; j++){
-	C[i][j] += A[i][k] * B[k][j];
+    for (int i=fromRowIdx; i<fromRowIdx+range; i++){
+      for(int k=0; k<P; k++){
+	for (int j=0; j<M; j++){
+	  C[i][j] += A[i][k] * B[k][j];
+	}
       }
     }
+    done = true;
   }
+
+  // Use host to compute the other half
+#pragma omp parallel for
+    for (int i=fromRowIdx+range; i<toRowIdx; i++){
+      for(int k=0; k<P; k++){
+	for (int j=0; j<M; j++){
+	  C[i][j] += A[i][k] * B[k][j];
+	}
+      }
+    }
+
+  // Wait for both the finish
+#pragma offload_wait target(mic:rank) wait(done)
 
   // timer for the end of the computation
   end = omp_get_wtime();
 
-#pragma offload target(mic) out(C)
-  {}
   // return the amount of high resolution time spent
   return end - start;
 }
@@ -155,7 +169,7 @@ int main(int argc, char **argv) {
   }
 
   // multiply the slice and capture the runtime
-  multiply_time = matrix_multiply(fromRowIdx, toRowIdx);
+  multiply_time = matrix_multiply(fromRowIdx, toRowIdx, rank);
 
   // Gather results from all machines
   if (rank == 0) {
@@ -171,6 +185,13 @@ int main(int argc, char **argv) {
     printf("Finish gather data from all machines, communication takes %f sec\n", run_time);
   }
 
+  /* if (rank == 0)  */
+  /*   for (int i = 0; i < N; i++) */
+  /*     { */
+  /* 	for (int j = 0; j < M; j++) */
+  /* 	  printf("%f  ", C[i][j]); */
+  /* 	printf("\n"); */
+  /*     } */
 
   // verify that the result is sensible at master machine
   if (rank == 0)
