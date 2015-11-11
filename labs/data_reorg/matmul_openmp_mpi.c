@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
       correct  = check_result();
 
       // Compute the number of mega flops
-      mflops = (2.0 * N * P * M) / (1000000.0 * run_time);
+      mflops = (2.0 * N * P * M) / (1000000.0 * multiply_time);
       printf("Order %d multiplication in %f seconds \n", ORDER, multiply_time);
       printf("Order %d multiplication at %f mflops\n", ORDER, mflops);
 

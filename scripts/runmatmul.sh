@@ -40,6 +40,12 @@ do
 		(ulimit -t 300; $PWD/matmul_openmp_reorg)
 		echo -e "Run Offload Code"
 		(ulimit -t 300; $PWD/matmul_offload)
+		echo -e "Run MPI Serial Code"
+		(ulimit -t 300; $PWD/run_mpi.sh)
+		echo -e "Run MPI OpenMP Code"
+		(ulimit -t 300; $PWD/run_mpi.sh _openmp)
+		echo -e "Run MPI Offload Code"
+		(ulimit -t 300; $PWD/run_mpi.sh _offload)
 		popd
     fi
   done
